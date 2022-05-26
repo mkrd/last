@@ -1,0 +1,94 @@
+<html>
+<head>
+    <title>Test</title>
+    <style>
+
+    </style>z
+</head>
+<body>
+    <h1 ui="m.30px flex-flow.row.nowrap justify-content.center color.green">
+        Test
+    </h1>
+    <p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
+        This is a test page.
+    </p>
+
+</body>
+<script>
+
+    function expand_shortcuts(s, style_set) {
+        // Flex
+        if (s === "flex") return "display.flex"
+        // Margins
+        const substitutions = [
+            // Margin
+            ["m", "margin"],
+            ["mt", "margin-top"],
+            ["mb", "margin-bottom"],
+            ["ml", "margin-left"],
+            ["mr", "margin-right"],
+             // Padding
+            ["p", "padding"],
+            ["pt", "padding-top"],
+            ["pb", "padding-bottom"],
+            ["pl", "padding-left"],
+            ["pr", "padding-right"],
+            // Flex
+            ["flow"           , "display.flex flex-flow"],
+            ["justify-content", "display.flex justify-content"],
+            ["align-items"    , "display.flex align-items"],
+            ["align-content"  , "display.flex align-content"],
+            ["grow", "display.flex flex-grow"],
+            // Sizing
+            ["w", "width"],
+            ["h", "height"],
+            ["min-w", "min-width"],
+            ["min-h", "min-height"],
+            ["max-w", "max-width"],
+            ["max-h", "max-height"],
+            // Positioning
+            ["pos", "position"],
+            ["t", "top"],
+            ["b", "bottom"],
+            ["l", "left"],
+            ["r", "right"],
+            ["z", "z-index"],
+
+
+        ]
+
+        // Check substitution shortcuts for duplicates
+        const shortcuts = substitutions.map(s => s[0])
+        if (shortcuts.length !== [...new Set(shortcuts)].length) {
+            throw new Error("Duplicate shortcuts")
+        }
+
+
+        for (const [shortcut, style] of substitutions) {
+            if (s.startsWith(shortcut + ".")) {
+                return style + s.substring(shortcut.length)
+            }
+        }
+
+        return s
+    }
+
+    function apply_style(element, syle_str) {
+        for (const style_ele of syle_str.split(" ")) {
+            for (const style of expand_shortcuts(style_ele).split(" ")) {
+                const name = style.split(".")[0]
+                const value = style.split(".").slice(1).join(" ")
+                console.log(name, value)
+                element.style[name] = value
+            }
+        }
+    }
+
+    var i = 0
+    while(i < 1000000000) i++
+    for (const ele of document.querySelectorAll("[ui]")) {
+        apply_style(ele, ele.getAttribute("ui"))
+        ele.removeAttribute("ui")
+    }
+</script>
+</html>
