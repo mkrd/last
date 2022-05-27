@@ -1,94 +1,184 @@
 <html>
 <head>
-    <title>Test</title>
-    <style>
-
-    </style>z
+	<title>Test</title>
+	<style>
+		:root {
+			--ui-primary-color: #3661cd;
+		}
+	</style>
 </head>
 <body>
-    <h1 ui="m.30px flex-flow.row.nowrap justify-content.center color.green">
-        Test
-    </h1>
-    <p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
-        This is a test page.
-    </p>
+	<h1 ui="m.30px flex-flow.row.nowrap justify-content.center color.#00f color.green">
+		Test
+	</h1>
+	<p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
+		This is a test page.
+	</p>
+	<p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
+		This is a test page.
+	</p>
+
+	<button ui="flex flex button display.block justify-content.center mt.100px w.50%">
+		This is a test page.
+	</button>
 
 </body>
 <script>
+	// TODO: Fix problem with multiple consecutive spaces in ui tag
+	// TODO: In expanded ui styles, remove duplicate style by the property name, keeping the last one
+	// TODO: Add support for modifiers, eg. <div ui:hover="border-radius.30px"> and <div ui:dark="background-color.#222">
+	// TODO: Make it easy to add new styles to the ui styles
 
-    function expand_shortcuts(s, style_set) {
-        // Flex
-        if (s === "flex") return "display.flex"
-        // Margins
-        const substitutions = [
-            // Margin
-            ["m", "margin"],
-            ["mt", "margin-top"],
-            ["mb", "margin-bottom"],
-            ["ml", "margin-left"],
-            ["mr", "margin-right"],
-             // Padding
-            ["p", "padding"],
-            ["pt", "padding-top"],
-            ["pb", "padding-bottom"],
-            ["pl", "padding-left"],
-            ["pr", "padding-right"],
-            // Flex
-            ["flow"           , "display.flex flex-flow"],
-            ["justify-content", "display.flex justify-content"],
-            ["align-items"    , "display.flex align-items"],
-            ["align-content"  , "display.flex align-content"],
-            ["grow", "display.flex flex-grow"],
-            // Sizing
-            ["w", "width"],
-            ["h", "height"],
-            ["min-w", "min-width"],
-            ["min-h", "min-height"],
-            ["max-w", "max-width"],
-            ["max-h", "max-height"],
-            // Positioning
-            ["pos", "position"],
-            ["t", "top"],
-            ["b", "bottom"],
-            ["l", "left"],
-            ["r", "right"],
-            ["z", "z-index"],
+	const __last_css_mode = "global" // inline or global
+
+	/**
+	 * Takes a string of the format "css_property_name.value1.value2.<more_values> css_property_name.value1.value2.<more_values> ..." and
+	 * converts it to a list of the format [{name : "value1 value2 <more_values>", name: "value1 value2 <more_values>"}]
+	 *
+	 */
+	function parse_ui_expanded_styler(ui_expanded_styler) {
+		let res = []
+		for (const style of ui_expanded_styler.split(" ")) {
+			res.push({
+				name: style.split(".")[0],
+				value: style.split(".").slice(1).join(" ")
+			})
+		}
+		console.log("parse_ui_expanded_styler", res)
+		return res
+	}
 
 
-        ]
+	function expand_shortcuts(ui_styler) {
+		let substitutions = [
+			// Margin
+			["m", "margin"],
+			["mt", "margin-top"],
+			["mb", "margin-bottom"],
+			["ml", "margin-left"],
+			["mr", "margin-right"],
+			 // Padding
+			["p", "padding"],
+			["pt", "padding-top"],
+			["pb", "padding-bottom"],
+			["pl", "padding-left"],
+			["pr", "padding-right"],
+			// Flex
+			["flex"           , "display.flex"],
+			["flow"           , "display.flex flex-flow"],
+			["justify-content", "display.flex justify-content"],
+			["align-items"    , "display.flex align-items"],
+			["align-content"  , "display.flex align-content"],
+			["grow", "display.flex flex-grow"],
+			// Sizing
+			["w", "width"],
+			["h", "height"],
+			["min-w", "min-width"],
+			["min-h", "min-height"],
+			["max-w", "max-width"],
+			["max-h", "max-height"],
+			// Positioning
+			["pos", "position"],
+			["t", "top"],
+			["b", "bottom"],
+			["l", "left"],
+			["r", "right"],
+			["z", "z-index"],
+			// Custom Components
+			["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.16px font-weight.bold cursor.pointer"],
+		]
 
-        // Check substitution shortcuts for duplicates
-        const shortcuts = substitutions.map(s => s[0])
-        if (shortcuts.length !== [...new Set(shortcuts)].length) {
-            throw new Error("Duplicate shortcuts")
-        }
+		// Check substitution shortcuts for duplicates
+		const shortcuts = substitutions.map(e => e[0])
+		if (shortcuts.length !== [...new Set(shortcuts)].length) {
+			throw new Error("Duplicate shortcuts")
+		}
+
+		substitutions = Object.fromEntries(substitutions)
 
 
-        for (const [shortcut, style] of substitutions) {
-            if (s.startsWith(shortcut + ".")) {
-                return style + s.substring(shortcut.length)
-            }
-        }
+		let res = new Set()
+		for (const s of ui_styler.split(" ")) {
+			const shortcut = s.split(".")[0]
+			if (shortcut in substitutions) {
+				const expanded = substitutions[shortcut] + s.substring(shortcut.length)
+				for(const e of expanded.split(" ")) {
+					console.log("add", e)
+					res.add(e)
+				}
+			} else {
+				res.add(s)
+			}
+		}
 
-        return s
-    }
+		// Return string of unique css properties
+		console.log([...res].join(" "))
+		return [...res].join(" ")
+	}
 
-    function apply_style(element, syle_str) {
-        for (const style_ele of syle_str.split(" ")) {
-            for (const style of expand_shortcuts(style_ele).split(" ")) {
-                const name = style.split(".")[0]
-                const value = style.split(".").slice(1).join(" ")
-                console.log(name, value)
-                element.style[name] = value
-            }
-        }
-    }
 
-    var i = 0
-    while(i < 1000000000) i++
-    for (const ele of document.querySelectorAll("[ui]")) {
-        apply_style(ele, ele.getAttribute("ui"))
-        ele.removeAttribute("ui")
-    }
+	function apply_style_inline(element, ui_styler) {
+		console.log(ui_styler)
+		console.log(expand_shortcuts(ui_styler))
+		for (const {name, value} of parse_ui_expanded_styler(expand_shortcuts(ui_styler))) {
+			console.log(name, value)
+			element.style[name] = value
+		}
+	}
+
+	/**
+	 * Generate a style selector for every used ui tag element.
+	 * Problematic: The order in the ui tag is not guaranteed.
+	 * The elements further to the right in the ui tag should overwrite elements further to the left.
+	 */
+	function apply_style_global(elements) {
+		let styles = {}
+
+		for(const element of elements) {
+			const ui_styler = element.getAttribute("ui")
+
+			let style_str = ""
+			for (const {name, value} of parse_ui_expanded_styler(expand_shortcuts(ui_styler))) {
+				style_str += `${name}:${value};`
+			}
+
+			if (style_str in styles) {
+				styles[style_str].push(element)
+			} else {
+				styles[style_str] = [element]
+			}
+		}
+
+		let style_str = Object.entries(styles).map(([style, style_elements], i) => {
+			style_elements.map(e => e.setAttribute("ui", i))
+			return `[ui="${i}"]{\n${style.split(";").join(";\n")}}`
+		}).join("\n")
+
+		var style = document.createElement('style')
+		style.innerHTML = style_str
+		document.head.appendChild(style)
+	}
+
+	function substitute_ui_attributes_with_css() {
+		const elements = document.querySelectorAll("[ui]")
+
+		if (__last_css_mode === "global") {
+			apply_style_global(elements)
+		}
+		else if (__last_css_mode === "inline") {
+			for (const ele of document.querySelectorAll("[ui]")) {
+				apply_style_inline(ele, ele.getAttribute("ui"))
+				ele.removeAttribute("ui")
+			}
+		}
+		else if (__last_css_mode === "classes") {
+			apply_style_classes(elements)
+		}
+
+	}
+
+	console.time("Last init")
+	substitute_ui_attributes_with_css()
+	console.timeEnd("Last init")
 </script>
 </html>
