@@ -1,3 +1,4 @@
+(function () {
 "use strict"
 
 // TODO: use esbuild and node with live reload
@@ -91,6 +92,36 @@ function dispatch(el, name, detail = {}) {
 
 
 /**
+ * Like querySelectorAll, but also returns all elements inside <template> tags.
+ * Unlike querySelectorAll, this function returns an array, not a NodeList.
+ */
+function querySelectorAllIncudingTemplates(root, selector) {
+    let res = [...root.querySelectorAll(selector)]
+    const templates = root.querySelectorAll("template")
+    for (const t of templates) {
+        res = res.concat([...t.content.querySelectorAll(selector)])
+    }
+    return res
+}
+
+
+function remove_duplicates_fast(a) {
+    var seen = {}
+    var out = []
+    var len = a.length
+    var j = 0
+    for (var i = 0; i < len; i++) {
+        var item = a[i]
+        if (seen[item] !== 1) {
+            seen[item] = 1
+            out[j++] = item
+        }
+    }
+    return out
+}
+
+
+/**
  * Takes a string of the format "css_property_name.value1.value2.<more_values> css_property_name.value1.value2.<more_values> ..." and
  * converts it to a list of the format [{name : "value1 value2 <more_values>", name: "value1 value2 <more_values>"}]
  *
@@ -127,11 +158,14 @@ function expand_shortcuts(ui_styler) {
 }
 
 
-function apply_style_inline(element, ui_styler) {
-    console.log("Set inline style of element", element, "to", expand_shortcuts(ui_styler))
-
-    for (const { name, value } of parse_ui_expanded_styler(expand_shortcuts(ui_styler))) {
-        element.style[name] = value
+function apply_style_inline(elements) {
+    for(const element of elements) {
+        const ui_styler = element.getAttribute("ui")
+        const ui_expanded_styler = expand_shortcuts(ui_styler)
+        for (const { name, value } of parse_ui_expanded_styler(ui_expanded_styler)) {
+            element.style[name] = value
+        }
+        element.removeAttribute("ui")
     }
 }
 
@@ -170,23 +204,14 @@ function apply_style_global(elements) {
 
 
 function substitute_ui_attributes_with_css() {
-    let elements = document.querySelectorAll("[ui]")
-    const templates = document.querySelectorAll("template")
-    elements = [...elements]
-    for (const template of templates) {
-        elements = [...elements, ...template.content.querySelectorAll("[ui]")]
-    }
-
-    console.log(elements)
-
+    // Get all elements with ui tag, including those in template elements
+    let elements = querySelectorAllIncudingTemplates(document, "[ui]")
+    // Apply styles based on configured mode
     if (lastcss.config.mode === "global") {
         apply_style_global(elements)
     }
     else if (lastcss.config.mode === "inline") {
-        for (const ele of elements) {
-            apply_style_inline(ele, ele.getAttribute("ui"))
-            ele.removeAttribute("ui")
-        }
+        apply_style_inline(elements)
     }
 }
 
@@ -201,24 +226,24 @@ function substitute_ui_attributes_with_css() {
 
 window.lastcss = lastcss
 
-queueMicrotask(() => {
-    // Start
-    if (!document.body) {
-        throw new Error("Unable to initialize. Did you forget to add 'defer' in Last's '<script>' tag?")
-    }
+// Check if body exists
+if (!document.body) {
+    throw new Error("Unable to initialize Last CSS. Do not use the <script> tag in the header, but rater after the <body> tag")
+}
 
-    console.log("🟣 Last: start init")
+console.log("🟣 Last: start init")
 
-    // Load
-    console.time("🟣 Last init")
-    dispatch(document, "last:init")
+// Load
+console.time("🟣 Last init")
+dispatch(document, "last:init")
 
-    // Parse and validate substitutions
-    lastcss.substitutions = parse_and_validate_substitutions(__substitutions)
+// Parse and validate substitutions
+lastcss.substitutions = parse_and_validate_substitutions(__substitutions)
 
-    // Perform substitutions
-    substitute_ui_attributes_with_css()
+// Perform substitutions
+substitute_ui_attributes_with_css()
 
-    dispatch(document, "last:initialized")
-    console.timeEnd("🟣 Last init")
-})
+dispatch(document, "last:initialized")
+console.timeEnd("🟣 Last init")
+
+})()
