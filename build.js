@@ -9,7 +9,6 @@ require("esbuild").build({
     bundle: true,
     watch: {
         onRebuild: () => {
-            console.log("Rebuilt")
             fs.copyFile("./dist/last.min.js", "./docs/last.min.js", (err) => {
                 if (err) throw err
             })

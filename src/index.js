@@ -3,7 +3,6 @@ import utils from "./utils"
 import substitutions from "./substitutions"
 
 
-
 window.lastcss = lastcss
 
 // Check if body exists
