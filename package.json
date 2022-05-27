@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "esbuild": "^0.14.41"
+  },
+  "scripts": {
+    "build": "./node_modules/.bin/esbuild --bundle src/index.js --outfile=dist/last.min.js",
+    "watch": "npm run build -- --watch"
+  }
+}
