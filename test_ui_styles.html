@@ -17,19 +17,34 @@
 	<p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
 		This is a test page.
 	</p>
+	<div x-data ui="flow.row.wrap">
 
-	<button ui="flex flex button display.block justify-content.center mt.100px w.50%">
-		This is a test page.
-	</button>
+		<template x-for="i in 300">
+
+			<button ui="flex flex button display.block justify-content.center mt.100px flex-basis.100px">
+				This is a test page.
+			</button>
+		</template>
+	</div>
 
 </body>
 <script defer src="last.js"></script>
+<script defer src="alpine.js"></script>
 <script>
 	document.addEventListener("last:init", () => {
 		console.log("🟢last:init fired")
 		lastcss.config.mode = "inline"
 	})
 
-	console.log(expand_shortcuts("color.green"))
+	let react = {
+		last_annotation_id: "",
+	}
+
+	document.addEventListener("alpine:init", () => {
+		console.log("🟣", "alpine:init event fired")
+		// Runs after everything is loaded
+		react = Alpine.reactive(react)
+	})
+
 </script>
 </html>

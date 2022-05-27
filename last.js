@@ -1,5 +1,6 @@
 "use strict"
 
+// TODO: use esbuild and node with live reload
 // TODO: Fix problem with multiple consecutive spaces in ui tag
 // TODO: In expanded ui styles, remove duplicate style by the property name, keeping the last one
 // TODO: Add support for modifiers, eg. <div ui:hover="border-radius.30px"> and <div ui:dark="background-color.#222">
@@ -39,7 +40,7 @@ const __substitutions = [
     ["justify-content", "display.flex justify-content"],
     ["align-items", "display.flex align-items"],
     ["align-content", "display.flex align-content"],
-    ["grow", "display.flex flex-grow"],
+    ["grow", "flex-grow"],
     // Sizing
     ["w", "width"],
     ["h", "height"],
@@ -114,7 +115,6 @@ function expand_shortcuts(ui_styler) {
         if (shortcut in lastcss.substitutions) {
             const expanded = lastcss.substitutions[shortcut] + s.substring(shortcut.length)
             for (const e of expanded.split(" ")) {
-                console.log("add", e)
                 res.add(e)
             }
         } else {
@@ -123,16 +123,14 @@ function expand_shortcuts(ui_styler) {
     }
 
     // Return string of unique css properties
-    console.log([...res].join(" "))
     return [...res].join(" ")
 }
 
 
 function apply_style_inline(element, ui_styler) {
-    console.log(ui_styler)
-    console.log(expand_shortcuts(ui_styler))
+    console.log("Set inline style of element", element, "to", expand_shortcuts(ui_styler))
+
     for (const { name, value } of parse_ui_expanded_styler(expand_shortcuts(ui_styler))) {
-        console.log(name, value)
         element.style[name] = value
     }
 }
@@ -172,19 +170,23 @@ function apply_style_global(elements) {
 
 
 function substitute_ui_attributes_with_css() {
-    const elements = document.querySelectorAll("[ui]")
+    let elements = document.querySelectorAll("[ui]")
+    const templates = document.querySelectorAll("template")
+    elements = [...elements]
+    for (const template of templates) {
+        elements = [...elements, ...template.content.querySelectorAll("[ui]")]
+    }
+
+    console.log(elements)
 
     if (lastcss.config.mode === "global") {
         apply_style_global(elements)
     }
     else if (lastcss.config.mode === "inline") {
-        for (const ele of document.querySelectorAll("[ui]")) {
+        for (const ele of elements) {
             apply_style_inline(ele, ele.getAttribute("ui"))
             ele.removeAttribute("ui")
         }
-    }
-    else if (lastcss.config.mode === "classes") {
-        apply_style_classes(elements)
     }
 }
 
