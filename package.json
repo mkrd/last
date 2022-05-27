@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "esbuild": "^0.14.41"
+    "esbuild": "^0.14.41",
+    "fs": "^0.0.1-security"
   },
   "scripts": {
     "build": "./node_modules/.bin/esbuild --bundle src/index.js --outfile=dist/last.min.js",
