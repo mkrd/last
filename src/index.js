@@ -18,6 +18,8 @@ utils.dispatch(document, "last:init")
 
 // Parse and validate substitutions
 lastcss.substitutions = utils.parse_and_validate_substitutions(substitutions)
+lastcss.refresh = utils.substitute_ui_attributes_with_css
+
 
 // Perform substitutions
 utils.substitute_ui_attributes_with_css()

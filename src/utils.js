@@ -1,4 +1,3 @@
-
 ////
 ////
 ////
@@ -17,6 +16,11 @@ function parse_and_validate_substitutions(substitutions) {
     return Object.fromEntries(substitutions)
 }
 
+
+
+
+
+
 function dispatch(el, name, detail = {}) {
     el.dispatchEvent(
         new CustomEvent(name, {
@@ -27,6 +31,39 @@ function dispatch(el, name, detail = {}) {
             cancelable: true,
         })
     )
+}
+
+
+function log(...args) {
+    if (!lastcss.config.log) return
+    console.log(...args)
+
+}
+
+
+function time(label) {
+    if (!lastcss.config.log) return
+    console.time(label)
+}
+
+
+function timeEnd(label) {
+    if (!lastcss.config.log) return
+    console.timeEnd(label)
+}
+
+
+function remove_with_numeric_ui_tag(elements) {
+    return elements.filter(e => !e.getAttribute("ui").match(/^\d+$/))
+}
+
+
+let __counter = 0
+function get_unique_id()
+{
+    const id = `${__counter}`
+    __counter++
+    return id
 }
 
 
@@ -44,78 +81,61 @@ function querySelectorAllIncudingTemplates(root, selector) {
 }
 
 
-function remove_duplicates_fast(a) {
-    var seen = {}
-    var out = []
-    var len = a.length
-    var j = 0
-    for (var i = 0; i < len; i++) {
-        var item = a[i]
-        if (seen[item] !== 1) {
-            seen[item] = 1
-            out[j++] = item
-        }
-    }
-    return out
+function remove_duplicates_keeping_last(array, key) {
+    return [...new Map(array.map(x => [key(x), x])).values()]
 }
 
 
 /**
- * Takes a string of the format "css_property_name.value1.value2.<more_values> css_property_name.value1.value2.<more_values> ..." and
- * converts it to a list of the format [{name : "value1 value2 <more_values>", name: "value1 value2 <more_values>"}]
- *
+ * Takes a string of the format "css_property_name.value1.value2.<more_values>" and
+ * converts it to an object of the format {property: "css_property_name", value: "value1 value2 ..." }
  */
-function parse_ui_expanded_styler(ui_expanded_styler) {
-    let res = []
-    for (const style of ui_expanded_styler.split(" ")) {
-        res.push({
-            name: style.split(".")[0],
-            value: style.split(".").slice(1).join(" ")
-        })
+function parse_dot_notation_to_object(style_dot_notation) {
+    const split = style_dot_notation.split(".")
+    return {
+        property: split[0],
+        value: split.slice(1).join(" ")
     }
-    console.log("parse_ui_expanded_styler", res)
-    return res
 }
 
 
-function expand_shortcuts(ui_styler) {
-    let res = new Set()
-    for (const s of ui_styler.split(" ")) {
-        console.log("-", s, "-", s in lastcss.substitutions)
-
-        let shortcut = s.split(".")[0]
-        // Case 1: shortcut like "pos.abs"
+function parse_ui_tag(ui_tag) {
+    let style_components = [] // {property: <property>, value: <value>}
+    for (const s of ui_tag.split(" ")) {
+        // Case 1: shortcut like "pos.abs" or "button"
         if (s in lastcss.substitutions) {
-            res.add(lastcss.substitutions[s])
+            for (const e of lastcss.substitutions[s].split(" ")) {
+                style_components.push(parse_dot_notation_to_object(e))
+            }
+            continue
         }
         // Case 2: shortcut like "m.<...>"
-        else if (shortcut in lastcss.substitutions) {
+        let shortcut = s.split(".")[0]
+        if (shortcut in lastcss.substitutions) {
             const expanded = lastcss.substitutions[shortcut] + s.substring(shortcut.length)
             for (const e of expanded.split(" ")) {
-                res.add(e)
+                style_components.push(parse_dot_notation_to_object(e))
             }
+            continue
         }
         // Case 3: No substitution exists
-        else {
-            res.add(s)
-        }
+        style_components.push(parse_dot_notation_to_object(s))
     }
 
-    // Return string of unique css properties
-    return [...res].join(" ")
+    return remove_duplicates_keeping_last(style_components, e => e.property)
 }
 
 
 function apply_style_inline(elements) {
     for (const element of elements) {
-        const ui_styler = element.getAttribute("ui")
-        const ui_expanded_styler = expand_shortcuts(ui_styler)
-        for (const { name, value } of parse_ui_expanded_styler(ui_expanded_styler)) {
-            element.style[name] = value
+        const ui_tag = element.getAttribute("ui")
+        for (const { property, value } of parse_ui_tag(ui_tag)) {
+            element.style[property] = value
         }
         element.removeAttribute("ui")
     }
 }
+
 
 /**
  * Generate a style selector for every used ui tag element.
@@ -126,11 +146,11 @@ function apply_style_global(elements) {
     let styles = {}
 
     for (const element of elements) {
-        const ui_styler = element.getAttribute("ui")
+        const ui_tag = element.getAttribute("ui")
 
         let style_str = ""
-        for (const { name, value } of parse_ui_expanded_styler(expand_shortcuts(ui_styler))) {
-            style_str += `${name}:${value};`
+        for (const { property, value } of parse_ui_tag(ui_tag)) {
+            style_str += `${property}:${value};`
         }
 
         if (style_str in styles) {
@@ -141,8 +161,9 @@ function apply_style_global(elements) {
     }
 
     let style_str = Object.entries(styles).map(([style, style_elements], i) => {
-        style_elements.map(e => e.setAttribute("ui", i))
-        return `[ui="${i}"]{\n${style.split(";").join(";\n")}}`
+        const id = get_unique_id()
+        style_elements.map(e => e.setAttribute("ui", id))
+        return `[ui="${id}"]{\n${style.split(";").join(";\n")}}`
     }).join("\n")
 
     var style = document.createElement('style')
@@ -150,10 +171,29 @@ function apply_style_global(elements) {
     document.head.appendChild(style)
 }
 
+// function create_ele_wrap(elements) {
+//     let res = []
+//     for (const element of elements) {
+//         const ui_tag = element.getAttribute("ui")
+//         res.push({
+//             element: element,
+//             ui_tag: ui_tag,
+//             ui_props: ui_tag.split(" "),
+//             ui_props_expanded: expand_shortcuts(ui_tag),
+
+//         })
+//     }
+// }
+
 
 function substitute_ui_attributes_with_css() {
+    time("🟣🏁 Apply styles")
+
     // Get all elements with ui tag, including those in template elements
     let elements = querySelectorAllIncudingTemplates(document, "[ui]")
+    elements = remove_with_numeric_ui_tag(elements)
+
+
     // Apply styles based on configured mode
     if (lastcss.config.mode === "global") {
         apply_style_global(elements)
@@ -161,16 +201,18 @@ function substitute_ui_attributes_with_css() {
     else if (lastcss.config.mode === "inline") {
         apply_style_inline(elements)
     }
+
+    timeEnd("🟣🏁 Apply styles")
 }
 
 export default {
+    log,
+    time,
+    timeEnd,
     parse_and_validate_substitutions,
     dispatch,
+    get_unique_id,
     querySelectorAllIncudingTemplates,
-    remove_duplicates_fast,
-    parse_ui_expanded_styler,
-    expand_shortcuts,
-    apply_style_inline,
     apply_style_global,
     substitute_ui_attributes_with_css,
 }

@@ -1,55 +1,80 @@
 <html>
 
 <head>
-    <title>Test</title>
-    <style>
-        :root {
-            --ui-primary-color: #84cd36;
-        }
-    </style>
+	<title>Test</title>
+	<style>
+		:root {
+			--ui-primary-color: #84cd36;
+		}
+	</style>
 </head>
 
 <body ui="m.0 p.0">
 
-    <div ui="flex width.100% min-height.100% background-color.#eee">
+	<div ui="width.100% min-height.50% background-color.#fff">
+		<h1 ui="m.30px flex-flow.row.nowrap justify-content.center color.#00f color.green">
+			Test
+		</h1>
+		<p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
+			This is a test page.
+		</p>
 
-    </div>
 
-    <h1 ui="m.30px flex-flow.row.nowrap justify-content.center color.#00f color.green">
-        Test
-    </h1>
-    <p ui="display.block justify-content.center color.#333333 mt.100px w.50%">
-        This is a test page.
-    </p>
+		<template x-data x-for="i in 2">
+			<div ui="w.100% min-h.100px background-color.#bbb">
+				<template x-for="i in 100">
+					<div :ui="'background-color.#111 h.1px w.' + i + '%'"></div>
+				</template>
+			</div>
+		</template>
 
-    <div x-data ui="flow.row.wrap gap.10px.4px ">
 
-        <template x-for="i in 300">
+		<div x-data ui="flow.row.wrap gap.10px.4px ">
 
-            <button ui="flex flex button display.block justify-content.center flex-basis.100px" x-text="'Button ' + i">
-                This is a test page.
-            </button>
-        </template>
-    </div>
+			<template x-for="i in 300">
+
+				<button ui="flex flex button display.block justify-content.center flex-basis.100px" x-text="'Button ' + i">
+					This is a test page.
+				</button>
+			</template>
+		</div>
+
+	</div>
+
+
+
+
 </body>
 
-<script src="last.min.js"></script>
+<script defer src="last.min.js"></script>
 <script defer src="alpine.js"></script>
 <script>
-    document.addEventListener("last:init", () => {
-        console.log("🟢last:init fired")
-        lastcss.config.mode = "inline"
-    })
+	document.addEventListener("last:init", () => {
+		console.log("🟢last:init fired")
+		lastcss.config.mode = "global"
+		lastcss.config.log = true
+	})
 
-    let react = {
-        last_annotation_id: "",
-    }
+	document.addEventListener("last:initialized", () => {
+		 console.log("🟢last:initialized fired")
+	})
 
-    document.addEventListener("alpine:init", () => {
-        console.log("🟡", "alpine:init event fired")
-        // Runs after everything is loaded
-        react = Alpine.reactive(react)
-    })
+	let react = {
+		last_annotation_id: "",
+	}
+
+	document.addEventListener("alpine:init", () => {
+		console.log("🟡", "alpine:init event fired")
+		react = Alpine.reactive(react)
+		// lastcss.refresh()
+	})
+
+	document.addEventListener("alpine:initialized", () => {
+			console.log("🟡", "alpine:initialized event fired")
+			// react = Alpine.reactive(react)
+
+			lastcss.refresh()
+		})
 
 </script>
 

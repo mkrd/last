@@ -1,7 +1,6 @@
-let lastcss = {
+export default {
     config: {
-        mode: "global" // global, inline
+        mode: "global", // global, inline
+        log: false
     },
 }
-
-export default lastcss

@@ -36,5 +36,5 @@ export default [
     ["r", "right"],
     ["z", "z-index"],
     // Custom Components
-    ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.16px font-weight.bold cursor.pointer"],
+    ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"],
 ]
