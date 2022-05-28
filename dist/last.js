@@ -60,9 +60,25 @@
   }
   function parse_dot_notation_to_object(style_dot_notation) {
     const split = style_dot_notation.split(".");
+    const property = split[0];
+    let value = split.slice(1).join(".");
+    let parenthesis_is_open = false;
+    for (var i = 0; i < value.length; i++) {
+      if (value[i] === "(") {
+        parenthesis_is_open = true;
+        continue;
+      }
+      if (value[i] === ")") {
+        parenthesis_is_open = false;
+        continue;
+      }
+      if (!parenthesis_is_open && value[i] === ".") {
+        value = value.substring(0, i) + " " + value.substring(i + 1);
+      }
+    }
     return {
-      property: split[0],
-      value: split.slice(1).join(" ")
+      property,
+      value
     };
   }
   function parse_ui_tag(ui_tag) {
@@ -175,6 +191,10 @@ ${style2.split(";").join(";\n")}}`;
     ["l", "left"],
     ["r", "right"],
     ["z", "z-index"],
+    ["bg", "background"],
+    ["bg-color", "background-color"],
+    ["header", "font-size.3rem font-weight.800"],
+    ["tiny", "transform.scale(0.5)"],
     ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"]
   ];
 

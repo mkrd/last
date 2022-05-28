@@ -92,9 +92,27 @@ function remove_duplicates_keeping_last(array, key) {
  */
 function parse_dot_notation_to_object(style_dot_notation) {
     const split = style_dot_notation.split(".")
+    const property = split[0]
+    // Only replace dot if not in parentheses
+    let value = split.slice(1).join(".")
+    let parenthesis_is_open = false
+    for (var i = 0; i < value.length; i++) {
+        if (value[i] === "(") {
+            parenthesis_is_open = true
+            continue
+        }
+        if (value[i] === ")") {
+            parenthesis_is_open = false
+            continue
+        }
+        if (!parenthesis_is_open && value[i] === ".") {
+            value = value.substring(0, i) + " " + value.substring(i + 1)
+        }
+    }
+
     return {
-        property: split[0],
-        value: split.slice(1).join(" ")
+        property: property,
+        value: value,
     }
 }
 
