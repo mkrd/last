@@ -135,8 +135,8 @@
   }
 
   // src/utils.js
-  function dispatch(el, name, detail = {}) {
-    el.dispatchEvent(new CustomEvent(name, {
+  function dispatch(element, name, detail = {}) {
+    element.dispatchEvent(new CustomEvent(name, {
       detail,
       bubbles: true,
       composed: true,
