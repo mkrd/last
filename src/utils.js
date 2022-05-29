@@ -9,8 +9,14 @@ import { apply_components } from "./components"
 //// Utils
 ////////////////////////////////////////////////////////////////////////////////
 
-function dispatch(el, name, detail = {}) {
-    el.dispatchEvent(
+
+/**
+ * It dispatches a custom event with the given name and detail object
+ * @param {Element} element - The element to dispatch the event on.
+ * @param {string} name - The name of the event.
+ */
+function dispatch(element, name, detail = {}) {
+    element.dispatchEvent(
         new CustomEvent(name, {
             detail,
             bubbles: true,
@@ -23,6 +29,11 @@ function dispatch(el, name, detail = {}) {
 
 
 
+/**
+ * It removes elements from a list that have a "ui" attribute that is a number
+ * @param {Element[]} elements - The elements to filter.
+ * @returns {Element[]} The elements that do not have a ui attribute that is a number.
+ */
 function remove_with_numeric_ui_tag(elements) {
     return elements.filter(e => !e.getAttribute("ui").match(/^\d+$/))
 }
@@ -40,6 +51,9 @@ function get_unique_id()
 /**
  * Like querySelectorAll, but also returns all elements inside <template> tags.
  * Unlike querySelectorAll, this function returns an array, not a NodeList.
+ * @param {Element} root
+ * @param {string} selector
+ * @returns {Element[]}
  */
 function querySelectorAllIncudingTemplates(root, selector) {
     let res = [...root.querySelectorAll(selector)]
