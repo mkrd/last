@@ -40,61 +40,66 @@ function reload_server() {
     clients.length = 0
 }
 
-require('esbuild').serve({ servedir: "./docs", port: 8000, host: "127.0.0.1" }, {}).then(() => {
-    http.createServer((req, res) => {
-        const { url, method, headers } = req
-        if (url === "/esbuild") return clients.push(res.writeHead(200, {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Access-Control-Allow-Origin": "*",
-            "Connection": "keep-alive",
-        }))
+function start_server(hot_reload_url) {
+    require('esbuild')
+    .serve({ servedir: "./docs", port: 8000, host: "127.0.0.1" }, {})
+    .then(() => {
+        http.createServer((req, res) => {
+            const { url, method, headers } = req
+            if (url === "/esbuild") return clients.push(res.writeHead(200, {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Access-Control-Allow-Origin": "*",
+                "Connection": "keep-alive",
+            }))
 
-        const path = ~url.split("/").pop().indexOf(".") ? url : `/index.html`
-        req.pipe(
-            http.request(
-                { hostname: "127.0.0.1", port: 8000, path, method, headers },
-                (prxRes) => {
-                    if (url === "/last.min.js") {
-                        const jsReloadCode = ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();'
-                        const newHeaders = {
-                            ...prxRes.headers,
-                            "content-length": parseInt(prxRes.headers["content-length"], 10) + jsReloadCode.length,
+            const path = ~url.split("/").pop().indexOf(".") ? url : `/index.html`
+            req.pipe(
+                http.request(
+                    { hostname: "127.0.0.1", port: 8000, path, method, headers },
+                    (prxRes) => {
+                        if (url === hot_reload_url) {
+                            const jsReloadCode = ';(() => new EventSource("/esbuild").onmessage = () => location.reload())();'
+                            const newHeaders = {
+                                ...prxRes.headers,
+                                "content-length": parseInt(prxRes.headers["content-length"], 10) + jsReloadCode.length,
+                            }
+                            res.writeHead(prxRes.statusCode, newHeaders)
+                            res.write(jsReloadCode)
+                        } else {
+                            res.writeHead(prxRes.statusCode, prxRes.headers)
                         }
-                        res.writeHead(prxRes.statusCode, newHeaders)
-                        res.write(jsReloadCode)
-                    } else {
-                        res.writeHead(prxRes.statusCode, prxRes.headers)
+                        prxRes.pipe(res, { end: true })
                     }
-                    prxRes.pipe(res, { end: true })
-                }
-            ),
-            { end: true }
-        )
-    }).listen(8080)
+                ),
+                { end: true }
+            )
+        }).listen(8080)
 
-    //open the default browser only if it is not opened yet
-    setTimeout(() => {
-        const open_command = {
-            darwin: ["open"],
-            linux: ["xdg-open"],
-            win32: ["cmd", "/c", "start"],
-        };
-        const ptf = process.platform
-        if (clients.length === 0)
-            spawn(open_command[ptf][0], [...[open_command[ptf].slice(1)], `http://localhost:8080`])
-    }, 1000)
-})
+        //open the default browser only if it is not opened yet
+        setTimeout(() => {
+            const open_command = {
+                darwin: ["open"],
+                linux: ["xdg-open"],
+                win32: ["cmd", "/c", "start"],
+            };
+            const ptf = process.platform
+            if (clients.length === 0)
+                spawn(open_command[ptf][0], [...[open_command[ptf].slice(1)], `http://localhost:8080`])
+        }, 1000)
+    })
+}
 
 
-fs.watch("./src", (_, filename) => {
-    console.log("CHANGE detected in " + filename)
-    build_and_reload()
-})
-
-fs.watch("./docs/index.html", (filename) => {
-    console.log("CHANGE detected in " + filename)
-    build_and_reload()
-})
-
+start_server("/last.js")
 build_and_reload()
+
+
+function on_change(filename) {
+    console.log("CHANGE detected in " + filename)
+    build_and_reload()
+}
+
+fs.watch("./src", (_, f) => on_change(f))
+fs.watch("./src/components", (_, f) => on_change(f))
+fs.watch("./docs/index.html", (f) => on_change(f))

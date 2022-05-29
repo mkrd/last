@@ -42,7 +42,7 @@ const substitutions = [
     ["header", "font-size.3rem font-weight.800"],
     ["tiny", "transform.scale(0.5)"],
     // Custom Components
-    ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"],
+    // ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"],
 ]
 
 

@@ -35,8 +35,7 @@
     ["bg", "background"],
     ["bg-color", "background-color"],
     ["header", "font-size.3rem font-weight.800"],
-    ["tiny", "transform.scale(0.5)"],
-    ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"]
+    ["tiny", "transform.scale(0.5)"]
   ];
   function parse_and_validate_substitutions(substitutions2) {
     const duplicates = substitutions2.map((e) => e[0]).filter((e, i, a) => a.indexOf(e) !== i);
@@ -53,9 +52,87 @@
     substitutions: substitutions_default,
     config: {
       mode: "global",
-      log: false
+      log: true
     }
   };
+
+  // src/logging.js
+  function log(...args) {
+    if (!lastcss_default.config.log)
+      return;
+    console.log(...args);
+  }
+  function time(label) {
+    if (!lastcss_default.config.log)
+      return;
+    console.time(label);
+  }
+  function timeEnd(label) {
+    if (!lastcss_default.config.log)
+      return;
+    console.timeEnd(label);
+  }
+
+  // src/components/button.js
+  log("\u{1FA83} Parse components/button");
+  var button_component = {
+    shortcut: "button",
+    ui_tag: "bg-color.var(--ui-primary-color) color.#fff border.none p.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer",
+    modifiers: {
+      "secondary": "bg-color.var(--ui-secondary-color)"
+    },
+    init: (ele) => {
+      log("Init button");
+    },
+    events: {
+      click: (event) => {
+        log("Clicked button", event.target);
+      }
+    }
+  };
+
+  // src/components/index.js
+  var components = {};
+  function register_component(component) {
+    log("\u{1F590}", "Register component", component.shortcut);
+    if (component.shortcut in components) {
+      throw new Error(`Component with shortcut ${component.shortcut} already registered`);
+    }
+    components[component.shortcut] = component;
+  }
+  register_component(button_component);
+  function intersect(a, b) {
+    return a.filter((x) => b.includes(x));
+  }
+  function apply_components(element) {
+    let ui_tag_split = element.getAttribute("ui").split(" ");
+    let components_to_apply = intersect(ui_tag_split, Object.keys(components));
+    if (components_to_apply.length === 0)
+      return;
+    if (components_to_apply.length > 1) {
+      throw new Error(`Cannot apply multiple ui components to one element. Choose one from: ${components_to_apply.join(", ")}`);
+    }
+    const component = components[components_to_apply[0]];
+    let modifiers = [];
+    if ("modifiers" in component) {
+      for (const [modifier, modifier_value] of Object.entries(component.modifiers)) {
+        const modifier_index = ui_tag_split.indexOf(modifier);
+        if (modifier_index !== -1) {
+          ui_tag_split.splice(modifier_index, 1);
+          modifiers.push(modifier_value);
+        }
+      }
+    }
+    ui_tag_split.splice(ui_tag_split.indexOf(component.shortcut), 1, component.ui_tag, ...modifiers);
+    if ("init" in component)
+      component.init(element);
+    if ("events" in component) {
+      for (const event in component.events) {
+        element.addEventListener(event, component.events[event]);
+      }
+    }
+    element.setAttribute("ui", ui_tag_split.join(" "));
+  }
 
   // src/utils.js
   function dispatch(el, name, detail = {}) {
@@ -65,21 +142,6 @@
       composed: true,
       cancelable: true
     }));
-  }
-  function log(...args) {
-    if (!lastcss.config.log)
-      return;
-    console.log(...args);
-  }
-  function time(label) {
-    if (!lastcss.config.log)
-      return;
-    console.time(label);
-  }
-  function timeEnd(label) {
-    if (!lastcss.config.log)
-      return;
-    console.timeEnd(label);
   }
   function remove_with_numeric_ui_tag(elements) {
     return elements.filter((e) => !e.getAttribute("ui").match(/^\d+$/));
@@ -178,10 +240,13 @@ ${style2.split(";").join(";\n")}}`;
     style.innerHTML = style_str;
     document.head.appendChild(style);
   }
-  function substitute_ui_attributes_with_css() {
+  function apply_all() {
     time("\u{1F7E3}\u{1F3C1} Apply styles");
     let elements = querySelectorAllIncudingTemplates(document, "[ui]");
     elements = remove_with_numeric_ui_tag(elements);
+    for (const element of elements) {
+      apply_components(element);
+    }
     if (lastcss.config.mode === "global") {
       apply_style_global(elements);
     } else if (lastcss.config.mode === "inline") {
@@ -190,14 +255,9 @@ ${style2.split(";").join(";\n")}}`;
     timeEnd("\u{1F7E3}\u{1F3C1} Apply styles");
   }
   var utils_default = {
-    log,
-    time,
-    timeEnd,
     dispatch,
     get_unique_id,
-    querySelectorAllIncudingTemplates,
-    apply_style_global,
-    substitute_ui_attributes_with_css
+    apply_all
   };
 
   // src/index.js
@@ -205,13 +265,11 @@ ${style2.split(";").join(";\n")}}`;
   if (!document.body) {
     throw new Error("Unable to initialize Last CSS. Do not use the <script> tag in the header, but rater after the <body> tag");
   }
-  console.log("\u{1F7E3} Last: start init");
-  console.log("initial readyState:" + document.readyState);
-  document.addEventListener("readystatechange", () => console.log(document.readyState));
-  console.time("\u{1F7E3} Last init");
+  log("\u{1F7E3} Last: start init");
+  time("\u{1F7E3} Last init");
   utils_default.dispatch(document, "last:init");
-  lastcss_default.refresh = utils_default.substitute_ui_attributes_with_css;
-  utils_default.substitute_ui_attributes_with_css();
+  lastcss_default.refresh = utils_default.apply_all;
+  utils_default.apply_all();
   utils_default.dispatch(document, "last:initialized");
-  console.timeEnd("\u{1F7E3} Last init");
+  timeEnd("\u{1F7E3} Last init");
 })();

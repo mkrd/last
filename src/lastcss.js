@@ -5,6 +5,6 @@ export default {
     substitutions: substitutions,
     config: {
         mode: "global", // global, inline
-        log: false
+        log: true
     },
 }

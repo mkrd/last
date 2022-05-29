@@ -1,3 +1,6 @@
+import { time, timeEnd } from "./logging"
+import { apply_components } from "./components"
+
 ////
 ////
 ////
@@ -18,24 +21,6 @@ function dispatch(el, name, detail = {}) {
     )
 }
 
-
-function log(...args) {
-    if (!lastcss.config.log) return
-    console.log(...args)
-
-}
-
-
-function time(label) {
-    if (!lastcss.config.log) return
-    console.time(label)
-}
-
-
-function timeEnd(label) {
-    if (!lastcss.config.log) return
-    console.timeEnd(label)
-}
 
 
 function remove_with_numeric_ui_tag(elements) {
@@ -173,28 +158,19 @@ function apply_style_global(elements) {
     document.head.appendChild(style)
 }
 
-// function create_ele_wrap(elements) {
-//     let res = []
-//     for (const element of elements) {
-//         const ui_tag = element.getAttribute("ui")
-//         res.push({
-//             element: element,
-//             ui_tag: ui_tag,
-//             ui_props: ui_tag.split(" "),
-//             ui_props_expanded: expand_shortcuts(ui_tag),
-
-//         })
-//     }
-// }
 
 
-function substitute_ui_attributes_with_css() {
+function apply_all() {
     time("🟣🏁 Apply styles")
 
     // Get all elements with ui tag, including those in template elements
     let elements = querySelectorAllIncudingTemplates(document, "[ui]")
     elements = remove_with_numeric_ui_tag(elements)
 
+    // Apply components
+    for (const element of elements) {
+        apply_components(element)
+    }
 
     // Apply styles based on configured mode
     if (lastcss.config.mode === "global") {
@@ -210,12 +186,7 @@ function substitute_ui_attributes_with_css() {
 
 
 export default {
-    log,
-    time,
-    timeEnd,
     dispatch,
     get_unique_id,
-    querySelectorAllIncudingTemplates,
-    apply_style_global,
-    substitute_ui_attributes_with_css,
+    apply_all,
 }
