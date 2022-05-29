@@ -1,6 +1,5 @@
 import lastcss from "./lastcss"
 import utils from "./utils"
-import substitutions from "./substitutions"
 
 
 window.lastcss = lastcss
@@ -12,12 +11,14 @@ if (!document.body) {
 
 console.log("🟣 Last: start init")
 
+console.log('initial readyState:' + document.readyState);
+document.addEventListener('readystatechange', () => console.log(document.readyState));
+
 // Load
 console.time("🟣 Last init")
 utils.dispatch(document, "last:init")
 
 // Parse and validate substitutions
-lastcss.substitutions = utils.parse_and_validate_substitutions(substitutions)
 lastcss.refresh = utils.substitute_ui_attributes_with_css
 
 

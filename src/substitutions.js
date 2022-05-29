@@ -1,4 +1,4 @@
-export default [
+const substitutions = [
     // Margin
     ["m", "margin"],
     ["mt", "margin-top"],
@@ -44,3 +44,17 @@ export default [
     // Custom Components
     ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"],
 ]
+
+
+function parse_and_validate_substitutions(substitutions) {
+    // Check substitution shortcuts for duplicates
+    const duplicates = substitutions.map(e => e[0]).filter((e, i, a) => a.indexOf(e) !== i)
+    if (duplicates.length > 0) {
+        throw new Error(`Duplicate substitution shortcuts: ${duplicates.join(", ")}`)
+    }
+    return Object.fromEntries(substitutions)
+}
+
+const parsed_and_validated_substitutions = parse_and_validate_substitutions(substitutions)
+
+export default parsed_and_validated_substitutions

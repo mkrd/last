@@ -6,21 +6,6 @@
 //// Utils
 ////////////////////////////////////////////////////////////////////////////////
 
-function parse_and_validate_substitutions(substitutions) {
-    // Check substitution shortcuts for duplicates
-    const shortcuts = substitutions.map(e => e[0])
-    if (shortcuts.length !== [...new Set(shortcuts)].length) {
-        throw new Error("Duplicate shortcuts")
-    }
-
-    return Object.fromEntries(substitutions)
-}
-
-
-
-
-
-
 function dispatch(el, name, detail = {}) {
     el.dispatchEvent(
         new CustomEvent(name, {
@@ -139,7 +124,6 @@ function parse_ui_tag(ui_tag) {
         // Case 3: No substitution exists
         style_components.push(parse_dot_notation_to_object(s))
     }
-
     return remove_duplicates_keeping_last(style_components, e => e.property)
 }
 
@@ -227,7 +211,6 @@ export default {
     log,
     time,
     timeEnd,
-    parse_and_validate_substitutions,
     dispatch,
     get_unique_id,
     querySelectorAllIncudingTemplates,
