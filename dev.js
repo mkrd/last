@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs')
-const createServer = require('http').createServer
-const request  = require('http').request
+const http = require('http')
 const spawn = require('child_process').spawn
 
 const clients = []
@@ -15,7 +14,7 @@ function build_and_reload() {
         outfile: "./dist/last.js",
         bundle: true,
     }).then(() => {
-        console.log("copy dists to docs")
+        console.log("copy dist to docs")
         fs.copyFile("./dist/last.js", "./docs/last.js", () => {})
     }).then(() => {
         reload_server()
@@ -30,11 +29,6 @@ function build_and_reload() {
         outfile: "./dist/last.min.js",
         bundle: true,
         minify: true,
-    }).then(() => {
-        console.log("copy min dists to docs")
-        fs.copyFile("./dist/last.min.js", "./docs/last.min.js", () => {})
-    }).then(() => {
-        reload_server()
     }).catch(() => {
         process.exit(1)
     })
@@ -47,7 +41,7 @@ function reload_server() {
 }
 
 require('esbuild').serve({ servedir: "./docs", port: 8000, host: "127.0.0.1" }, {}).then(() => {
-    createServer((req, res) => {
+    http.createServer((req, res) => {
         const { url, method, headers } = req
         if (url === "/esbuild") return clients.push(res.writeHead(200, {
             "Content-Type": "text/event-stream",
@@ -58,7 +52,7 @@ require('esbuild').serve({ servedir: "./docs", port: 8000, host: "127.0.0.1" }, 
 
         const path = ~url.split("/").pop().indexOf(".") ? url : `/index.html`
         req.pipe(
-            request(
+            http.request(
                 { hostname: "127.0.0.1", port: 8000, path, method, headers },
                 (prxRes) => {
                     if (url === "/last.min.js") {
@@ -102,3 +96,5 @@ fs.watch("./docs/index.html", (filename) => {
     console.log("CHANGE detected in " + filename)
     build_and_reload()
 })
+
+build_and_reload()

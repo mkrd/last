@@ -207,6 +207,8 @@ function substitute_ui_attributes_with_css() {
     timeEnd("🟣🏁 Apply styles")
 }
 
+
+
 export default {
     log,
     time,

@@ -1,6 +1,56 @@
 (() => {
+  // src/substitutions.js
+  var substitutions = [
+    ["m", "margin"],
+    ["mt", "margin-top"],
+    ["mb", "margin-bottom"],
+    ["ml", "margin-left"],
+    ["mr", "margin-right"],
+    ["p", "padding"],
+    ["pt", "padding-top"],
+    ["pb", "padding-bottom"],
+    ["pl", "padding-left"],
+    ["pr", "padding-right"],
+    ["flex", "display.flex"],
+    ["flow", "display.flex flex-flow"],
+    ["justify-content", "display.flex justify-content"],
+    ["align-items", "display.flex align-items"],
+    ["align-content", "display.flex align-content"],
+    ["grow", "flex-grow"],
+    ["shrink", "flex-shrink"],
+    ["w", "width"],
+    ["h", "height"],
+    ["min-w", "min-width"],
+    ["min-h", "min-height"],
+    ["max-w", "max-width"],
+    ["max-h", "max-height"],
+    ["pos", "position"],
+    ["pos.abs", "position.absolute"],
+    ["pos.rel", "position.relative"],
+    ["t", "top"],
+    ["b", "bottom"],
+    ["l", "left"],
+    ["r", "right"],
+    ["z", "z-index"],
+    ["bg", "background"],
+    ["bg-color", "background-color"],
+    ["header", "font-size.3rem font-weight.800"],
+    ["tiny", "transform.scale(0.5)"],
+    ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"]
+  ];
+  function parse_and_validate_substitutions(substitutions2) {
+    const duplicates = substitutions2.map((e) => e[0]).filter((e, i, a) => a.indexOf(e) !== i);
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate substitution shortcuts: ${duplicates.join(", ")}`);
+    }
+    return Object.fromEntries(substitutions2);
+  }
+  var parsed_and_validated_substitutions = parse_and_validate_substitutions(substitutions);
+  var substitutions_default = parsed_and_validated_substitutions;
+
   // src/lastcss.js
   var lastcss_default = {
+    substitutions: substitutions_default,
     config: {
       mode: "global",
       log: false
@@ -8,13 +58,6 @@
   };
 
   // src/utils.js
-  function parse_and_validate_substitutions(substitutions) {
-    const shortcuts = substitutions.map((e) => e[0]);
-    if (shortcuts.length !== [...new Set(shortcuts)].length) {
-      throw new Error("Duplicate shortcuts");
-    }
-    return Object.fromEntries(substitutions);
-  }
   function dispatch(el, name, detail = {}) {
     el.dispatchEvent(new CustomEvent(name, {
       detail,
@@ -150,7 +193,6 @@ ${style2.split(";").join(";\n")}}`;
     log,
     time,
     timeEnd,
-    parse_and_validate_substitutions,
     dispatch,
     get_unique_id,
     querySelectorAllIncudingTemplates,
@@ -158,55 +200,16 @@ ${style2.split(";").join(";\n")}}`;
     substitute_ui_attributes_with_css
   };
 
-  // src/substitutions.js
-  var substitutions_default = [
-    ["m", "margin"],
-    ["mt", "margin-top"],
-    ["mb", "margin-bottom"],
-    ["ml", "margin-left"],
-    ["mr", "margin-right"],
-    ["p", "padding"],
-    ["pt", "padding-top"],
-    ["pb", "padding-bottom"],
-    ["pl", "padding-left"],
-    ["pr", "padding-right"],
-    ["flex", "display.flex"],
-    ["flow", "display.flex flex-flow"],
-    ["justify-content", "display.flex justify-content"],
-    ["align-items", "display.flex align-items"],
-    ["align-content", "display.flex align-content"],
-    ["grow", "flex-grow"],
-    ["shrink", "flex-shrink"],
-    ["w", "width"],
-    ["h", "height"],
-    ["min-w", "min-width"],
-    ["min-h", "min-height"],
-    ["max-w", "max-width"],
-    ["max-h", "max-height"],
-    ["pos", "position"],
-    ["pos.abs", "position.absolute"],
-    ["pos.rel", "position.relative"],
-    ["t", "top"],
-    ["b", "bottom"],
-    ["l", "left"],
-    ["r", "right"],
-    ["z", "z-index"],
-    ["bg", "background"],
-    ["bg-color", "background-color"],
-    ["header", "font-size.3rem font-weight.800"],
-    ["tiny", "transform.scale(0.5)"],
-    ["button", "background-color.var(--ui-primary-color) color.#fff border.none padding.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer"]
-  ];
-
   // src/index.js
   window.lastcss = lastcss_default;
   if (!document.body) {
     throw new Error("Unable to initialize Last CSS. Do not use the <script> tag in the header, but rater after the <body> tag");
   }
   console.log("\u{1F7E3} Last: start init");
+  console.log("initial readyState:" + document.readyState);
+  document.addEventListener("readystatechange", () => console.log(document.readyState));
   console.time("\u{1F7E3} Last init");
   utils_default.dispatch(document, "last:init");
-  lastcss_default.substitutions = utils_default.parse_and_validate_substitutions(substitutions_default);
   lastcss_default.refresh = utils_default.substitute_ui_attributes_with_css;
   utils_default.substitute_ui_attributes_with_css();
   utils_default.dispatch(document, "last:initialized");

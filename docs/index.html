@@ -51,12 +51,12 @@
 
 </body>
 
-<script defer src="last.min.js"></script>
 <script defer src="alpine.js"></script>
+<script defer src="last.js"></script>
 <script>
 	document.addEventListener("last:init", () => {
 		console.log("🟢last:init fired")
-		lastcss.config.mode = "global"
+		lastcss.config.mode = "inline"
 		lastcss.config.log = true
 	})
 
@@ -78,7 +78,7 @@
 			console.log("🟡", "alpine:initialized event fired")
 			// react = Alpine.reactive(react)
 
-			lastcss.refresh()
+			//lastcss.refresh()
 		})
 
 </script>
