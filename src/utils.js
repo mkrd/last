@@ -1,4 +1,4 @@
-import { time, timeEnd } from "./logging"
+import { log, time, timeEnd } from "./logging"
 import { apply_components } from "./components"
 
 ////
@@ -167,6 +167,7 @@ function apply_all() {
     let elements = querySelectorAllIncudingTemplates(document, "[ui]")
     elements = remove_with_numeric_ui_tag(elements)
 
+    log("apply_all", elements)
     // Apply components
     for (const element of elements) {
         apply_components(element)

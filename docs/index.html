@@ -26,20 +26,23 @@
 		</p>
 
 
-		<template x-data x-for="i in 3">
+		<template x-data x-for="i in 2">
 			<div ui="w.100% min-h.100px background-color.#bbb">
-				<template x-for="i in 100">
+				<template x-for="i in 2">
 					<div :ui="'background-color.#111 h.1px w.' + i + '%'"></div>
 				</template>
 			</div>
 		</template>
 
 
+		<button ui="button display.block justify-content.center flex-basis.100px" x-text="'Button ' + i">
+			This is a test page.
+		</button>
 		<div x-data ui="flow.row.wrap gap.10px.4px ">
 
-			<template x-for="i in 300">
+			<template x-for="i in 2">
 
-				<button ui="button display.block justify-content.center flex-basis.100px" x-text="'Button ' + i">
+				<button ui="secondary button display.block justify-content.center flex-basis.100px" x-text="'Button ' + i">
 					This is a test page.
 				</button>
 			</template>
@@ -72,15 +75,12 @@
 	document.addEventListener("alpine:init", () => {
 		console.log("🟡", "alpine:init event fired")
 		react = Alpine.reactive(react)
-		// lastcss.refresh()
 	})
 
-	document.addEventListener("alpine:initialized", () => {
-			console.log("🟡", "alpine:initialized event fired")
-			// react = Alpine.reactive(react)
-
-			//lastcss.refresh()
-		})
+	// document.addEventListener("alpine:initialized", () => {
+	// 	console.log("🟡", "alpine:initialized event fired")
+	// 	lastcss.refresh()
+	// })
 
 </script>
 

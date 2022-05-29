@@ -52,7 +52,7 @@
     substitutions: substitutions_default,
     config: {
       mode: "global",
-      log: true
+      log: false
     }
   };
 
@@ -244,6 +244,7 @@ ${style2.split(";").join(";\n")}}`;
     time("\u{1F7E3}\u{1F3C1} Apply styles");
     let elements = querySelectorAllIncudingTemplates(document, "[ui]");
     elements = remove_with_numeric_ui_tag(elements);
+    log("apply_all", elements);
     for (const element of elements) {
       apply_components(element);
     }
