@@ -57,15 +57,6 @@ Which is equivalent to
 ```
 
 
-# Data Classes
-
-First, all DOM elements, including those of the shadow DOM, with have the `ui` tag are obtained.
-If an element's `ui` tag contains a number only, then it will be omitted, since it was already processed.
-
-Then, the string content of each element's `ui` tag gets parsed as a `RawUIElement` with
-
-
-
 
 ```ts
 // Can be an abbreviation, like ml.5px (later evaluated to margin-left: 5px;)
@@ -122,3 +113,17 @@ Then replace component element with computed tags `list[LaxUIPropery]`.
 Also remove Component modifiers from `ui_tag_elements_list` and insert their substituted `list[LaxUIPropery]` right after the inserted stuff of the component
 
 Then as long as there are `LaxUIProperty`s in `ui_tag_elements_list` iterate `ui_tag_elements_list`, and for each, check if another substitution exists. If yes, replace with list of substitutions `list[LaxUIPropery]`. If no and contains at least one dot, transform and replace with `UIStrictProperty`, else remove because element is not valid.
+
+
+# Parsing
+Component styles are extracted first. They and their modifiers are processed to css stlyes
+
+```html
+<div ui="secondary button">
+```
+
+becomes
+
+```html
+<div class=" _L_button _L_secondary">
+```

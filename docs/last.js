@@ -56,33 +56,81 @@
     }
   };
 
-  // src/logging.js
+  // src/tools.js
+  function assert(condition) {
+    if (!condition) {
+      throw new Error("Assertion failed");
+    }
+    console.log("assertion passed");
+  }
+  function array_equals(a, b) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((val, index) => val === b[index]);
+  }
   function log(...args) {
     if (!lastcss_default.config.log)
       return;
     console.log(...args);
   }
+  var __active_timers = {};
   function time(label) {
     if (!lastcss_default.config.log)
       return;
-    console.time(label);
+    if (label in __active_timers) {
+      const ms = performance.now() - __active_timers[label];
+      console.log(`${label} - ${ms.toFixed(1)}ms`);
+      delete __active_timers[label];
+    } else {
+      __active_timers[label] = performance.now();
+    }
   }
-  function timeEnd(label) {
-    if (!lastcss_default.config.log)
-      return;
-    console.timeEnd(label);
+  function dispatch(element, name, detail = {}) {
+    element.dispatchEvent(new CustomEvent(name, {
+      detail,
+      bubbles: true,
+      composed: true,
+      cancelable: true
+    }));
   }
+  var __unique_id_counter = 0;
+  function get_unique_id() {
+    const id = `${__unique_id_counter}`;
+    __unique_id_counter++;
+    return id;
+  }
+  function intersect(a, b) {
+    return a.filter((x) => b.includes(x));
+  }
+  assert(array_equals(intersect([1, 2, 3], [2, 3, 4]), [2, 3]));
+  assert(array_equals(intersect([1, 2, 3], [4, 5, 6]), []));
 
-  // src/components/button.js
+  // src/components/models.js
+  var UIComponent = class {
+    name;
+    ui_tag;
+    modifiers;
+    init;
+    events;
+    constructor(json) {
+      this.name = json.name;
+      this.ui_tag = json.ui_tag;
+      this.modifiers = {};
+      if ("modifiers" in json)
+        this.modifiers = json.modifiers;
+      this.init = json.init;
+      this.events = json.events;
+    }
+  };
+
+  // src/components/all/button.js
   log("\u{1FA83} Parse components/button");
   var button_component = {
-    shortcut: "button",
+    name: "button",
     ui_tag: "bg-color.var(--ui-primary-color) color.#fff border.none p.10px border-radius.5px font-size.18px font-weight.bold cursor.pointer",
     modifiers: {
       "secondary": "bg-color.var(--ui-secondary-color)"
     },
     init: (ele) => {
-      log("Init button");
+      log("Init button", ele);
     },
     events: {
       click: (event) => {
@@ -94,63 +142,31 @@
   // src/components/index.js
   var components = {};
   function register_component(component) {
-    log("\u{1F590}", "Register component", component.shortcut);
-    if (component.shortcut in components) {
-      throw new Error(`Component with shortcut ${component.shortcut} already registered`);
+    log("\u{1F590}", "Register component", component.name);
+    if (component.name in components) {
+      throw new Error(`Cannot register component with name ${component.name} because a component with that name already exists`);
     }
-    components[component.shortcut] = component;
+    if (component.name in substitutions_default) {
+      throw new Error(`Cannot register component with name ${component.name} because a substitution with that name already exists`);
+    }
+    components[component.name] = new UIComponent(component);
   }
   register_component(button_component);
-  function intersect(a, b) {
-    return a.filter((x) => b.includes(x));
-  }
-  function apply_components(element) {
-    let ui_tag_split = element.getAttribute("ui").split(" ");
-    let components_to_apply = intersect(ui_tag_split, Object.keys(components));
-    if (components_to_apply.length === 0)
-      return;
-    if (components_to_apply.length > 1) {
-      throw new Error(`Cannot apply multiple ui components to one element. Choose one from: ${components_to_apply.join(", ")}`);
-    }
-    const component = components[components_to_apply[0]];
-    let modifiers = [];
-    if ("modifiers" in component) {
-      for (const [modifier, modifier_value] of Object.entries(component.modifiers)) {
-        const modifier_index = ui_tag_split.indexOf(modifier);
-        if (modifier_index !== -1) {
-          ui_tag_split.splice(modifier_index, 1);
-          modifiers.push(modifier_value);
-        }
-      }
-    }
-    ui_tag_split.splice(ui_tag_split.indexOf(component.shortcut), 1, component.ui_tag, ...modifiers);
-    if ("init" in component)
-      component.init(element);
-    if ("events" in component) {
-      for (const event in component.events) {
-        element.addEventListener(event, component.events[event]);
-      }
-    }
-    element.setAttribute("ui", ui_tag_split.join(" "));
-  }
 
   // src/utils.js
-  function dispatch(element, name, detail = {}) {
-    element.dispatchEvent(new CustomEvent(name, {
-      detail,
-      bubbles: true,
-      composed: true,
-      cancelable: true
-    }));
-  }
   function remove_with_numeric_ui_tag(elements) {
-    return elements.filter((e) => !e.getAttribute("ui").match(/^\d+$/));
-  }
-  var __counter = 0;
-  function get_unique_id() {
-    const id = `${__counter}`;
-    __counter++;
-    return id;
+    let filtered = [];
+    for (const e of elements) {
+      const split = e.getAttribute("ui").split(" ");
+      let found_match = false;
+      for (const part of split) {
+        if (part.match(/^\d+$/))
+          found_match = true;
+      }
+      if (!found_match)
+        filtered.push(e);
+    }
+    return filtered;
   }
   function querySelectorAllIncudingTemplates(root, selector) {
     let res = [...root.querySelectorAll(selector)];
@@ -169,29 +185,22 @@
     let value = split.slice(1).join(".");
     let parenthesis_is_open = false;
     for (var i = 0; i < value.length; i++) {
-      if (value[i] === "(") {
-        parenthesis_is_open = true;
-        continue;
-      }
-      if (value[i] === ")") {
-        parenthesis_is_open = false;
+      if ("()".includes(value[i])) {
+        parenthesis_is_open = value[i] === "(";
         continue;
       }
       if (!parenthesis_is_open && value[i] === ".") {
         value = value.substring(0, i) + " " + value.substring(i + 1);
       }
     }
-    return {
-      property,
-      value
-    };
+    return { property, value };
   }
   function parse_ui_tag(ui_tag) {
-    let style_components = [];
+    let css_rules = [];
     for (const s of ui_tag.split(" ")) {
       if (s in lastcss.substitutions) {
         for (const e of lastcss.substitutions[s].split(" ")) {
-          style_components.push(parse_dot_notation_to_object(e));
+          css_rules.push(parse_dot_notation_to_object(e));
         }
         continue;
       }
@@ -199,67 +208,143 @@
       if (shortcut in lastcss.substitutions) {
         const expanded = lastcss.substitutions[shortcut] + s.substring(shortcut.length);
         for (const e of expanded.split(" ")) {
-          style_components.push(parse_dot_notation_to_object(e));
+          css_rules.push(parse_dot_notation_to_object(e));
         }
         continue;
       }
-      style_components.push(parse_dot_notation_to_object(s));
+      css_rules.push(parse_dot_notation_to_object(s));
     }
-    return remove_duplicates_keeping_last(style_components, (e) => e.property);
+    return remove_duplicates_keeping_last(css_rules, (e) => e.property);
   }
-  function apply_style_inline(elements) {
-    for (const element of elements) {
-      const ui_tag = element.getAttribute("ui");
-      for (const { property, value } of parse_ui_tag(ui_tag)) {
-        element.style[property] = value;
-      }
+  var UIElement = class {
+    element;
+    ui_tag_list;
+    component;
+    used_component_modifiers;
+    constructor(element) {
+      this.element = element;
+      this.ui_tag_list = element.getAttribute("ui").split(" ");
       element.removeAttribute("ui");
     }
-  }
-  function apply_style_global(elements) {
-    let styles = {};
-    for (const element of elements) {
-      const ui_tag = element.getAttribute("ui");
-      let style_str2 = "";
-      for (const { property, value } of parse_ui_tag(ui_tag)) {
-        style_str2 += `${property}:${value};`;
+    extract_component_properties = () => {
+      let components_to_apply = intersect(this.ui_tag_list, Object.keys(components));
+      if (components_to_apply.length > 1) {
+        throw new Error(`Cannot apply multiple ui components to one element. Choose one from: ${components_to_apply.join(", ")}`);
       }
-      if (style_str2 in styles) {
-        styles[style_str2].push(element);
-      } else {
-        styles[style_str2] = [element];
+      if (components_to_apply.length === 0) {
+        this.component = null;
+        return;
+      }
+      this.component = components[components_to_apply[0]];
+      this.ui_tag_list = this.ui_tag_list.filter((e) => e !== this.component.shortcut);
+      this.used_component_modifiers = intersect(this.ui_tag_list, Object.keys(this.component.modifiers));
+      this.ui_tag_list = this.ui_tag_list.filter((e) => !this.used_component_modifiers.includes(e));
+    };
+    apply_component_functions = () => {
+      if (!this.component)
+        return;
+      console.log(this.element);
+      if ("init" in this.component)
+        this.component.init(this.element);
+      if ("events" in this.component) {
+        for (const event in this.component.events) {
+          this.element.addEventListener(event, this.component.events[event]);
+        }
+      }
+      this.element.setAttribute("ui", `${this.component.name} ${this.used_component_modifiers.join(" ")}`);
+    };
+    apply_style_inline = () => {
+      const ui_tag = this.ui_tag_list.join(" ");
+      for (const { property, value } of parse_ui_tag(ui_tag)) {
+        this.element.style[property] = value;
+      }
+    };
+  };
+  var UIElementList = class {
+    elements;
+    constructor(elements) {
+      this.elements = [];
+      for (const element of elements) {
+        const ui_element = new UIElement(element);
+        ui_element.extract_component_properties();
+        this.elements.push(ui_element);
       }
     }
-    let style_str = Object.entries(styles).map(([style2, style_elements], i) => {
-      const id = get_unique_id();
-      style_elements.map((e) => e.setAttribute("ui", id));
-      return `[ui="${id}"]{
+    make_global_component_style_sheet = () => {
+      let all_styles = {};
+      for (const element of this.elements) {
+        if (!element.component)
+          continue;
+        const element_selector = `[ui~="${element.component.name}"]`;
+        if (!(element_selector in all_styles)) {
+          all_styles[element_selector] = parse_ui_tag(element.component.ui_tag).map((e) => `${e.property}:${e.value};
+`).join("");
+        }
+        for (const modifier of element.used_component_modifiers) {
+          const modifier_selector = `:where([ui~="${element.component.name}"])[ui~="${modifier}"]`;
+          if (!(modifier_selector in all_styles)) {
+            const css_rules = parse_ui_tag(element.component.modifiers[modifier]);
+            let style_str = css_rules.map((e) => `${e.property}:${e.value};
+`).join("");
+            all_styles[modifier_selector] = style_str;
+          }
+        }
+      }
+      var style_ele = document.createElement("style");
+      style_ele.innerHTML = Object.entries(all_styles).map((e) => `${e[0]}{
+${e[1]}}`).join("");
+      document.head.insertBefore(style_ele, document.head.querySelector("style"));
+    };
+    apply_component_functions = () => {
+      for (const element of this.elements) {
+        element.apply_component_functions();
+      }
+    };
+    apply_styles_inline = () => {
+      for (const element of this.elements) {
+        element.apply_style_inline();
+      }
+    };
+    apply_styles_global = () => {
+      const elements = this.elements;
+      let styles = {};
+      for (const element of elements) {
+        const ui_tag = element.ui_tag_list.join(" ");
+        let style_str2 = "";
+        for (const { property, value } of parse_ui_tag(ui_tag)) {
+          style_str2 += `${property}:${value};`;
+        }
+        if (style_str2 in styles) {
+          styles[style_str2].push(element);
+        } else {
+          styles[style_str2] = [element];
+        }
+      }
+      let style_str = Object.entries(styles).map(([style2, style_elements], i) => {
+        const id = get_unique_id();
+        style_elements.map((e) => e.element.setAttribute("ui", [e.element.getAttribute("ui") ?? "", id].join(" ")));
+        return `[ui~="${id}"]{
 ${style2.split(";").join(";\n")}}`;
-    }).join("\n");
-    var style = document.createElement("style");
-    style.innerHTML = style_str;
-    document.head.appendChild(style);
-  }
+      }).join("\n");
+      var style = document.createElement("style");
+      style.innerHTML = style_str;
+      document.head.appendChild(style);
+    };
+  };
   function apply_all() {
     time("\u{1F7E3}\u{1F3C1} Apply styles");
     let elements = querySelectorAllIncudingTemplates(document, "[ui]");
     elements = remove_with_numeric_ui_tag(elements);
-    log("apply_all", elements);
-    for (const element of elements) {
-      apply_components(element);
-    }
+    const ui_element_list = new UIElementList(elements);
+    ui_element_list.make_global_component_style_sheet();
+    ui_element_list.apply_component_functions();
     if (lastcss.config.mode === "global") {
-      apply_style_global(elements);
+      ui_element_list.apply_styles_global();
     } else if (lastcss.config.mode === "inline") {
-      apply_style_inline(elements);
+      ui_element_list.apply_styles_inline();
     }
-    timeEnd("\u{1F7E3}\u{1F3C1} Apply styles");
+    time("\u{1F7E3}\u{1F3C1} Apply styles");
   }
-  var utils_default = {
-    dispatch,
-    get_unique_id,
-    apply_all
-  };
 
   // src/index.js
   window.lastcss = lastcss_default;
@@ -267,10 +352,10 @@ ${style2.split(";").join(";\n")}}`;
     throw new Error("Unable to initialize Last CSS. Do not use the <script> tag in the header, but rater after the <body> tag");
   }
   log("\u{1F7E3} Last: start init");
-  time("\u{1F7E3} Last init");
-  utils_default.dispatch(document, "last:init");
-  lastcss_default.refresh = utils_default.apply_all;
-  utils_default.apply_all();
-  utils_default.dispatch(document, "last:initialized");
-  timeEnd("\u{1F7E3} Last init");
+  time("Last init");
+  dispatch(document, "last:init");
+  lastcss_default.refresh = apply_all;
+  apply_all();
+  dispatch(document, "last:initialized");
+  time("Last init");
 })();

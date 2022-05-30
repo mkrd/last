@@ -1,5 +1,4 @@
-import { log, time, timeEnd } from "./logging"
-import { apply_components } from "./components"
+import { log, time, intersect, get_unique_id } from "./tools"
 
 ////
 ////
@@ -9,42 +8,24 @@ import { apply_components } from "./components"
 //// Utils
 ////////////////////////////////////////////////////////////////////////////////
 
-
-/**
- * It dispatches a custom event with the given name and detail object
- * @param {Element} element - The element to dispatch the event on.
- * @param {string} name - The name of the event.
- */
-function dispatch(element, name, detail = {}) {
-    element.dispatchEvent(
-        new CustomEvent(name, {
-            detail,
-            bubbles: true,
-            // Allows events to pass the shadow DOM barrier.
-            composed: true,
-            cancelable: true,
-        })
-    )
-}
-
-
-
 /**
  * It removes elements from a list that have a "ui" attribute that is a number
  * @param {Element[]} elements - The elements to filter.
  * @returns {Element[]} The elements that do not have a ui attribute that is a number.
  */
 function remove_with_numeric_ui_tag(elements) {
-    return elements.filter(e => !e.getAttribute("ui").match(/^\d+$/))
-}
 
+    let filtered = []
 
-let __counter = 0
-function get_unique_id()
-{
-    const id = `${__counter}`
-    __counter++
-    return id
+    for (const e of elements) {
+        const split = e.getAttribute("ui").split(" ")
+        let found_match = false
+        for (const part of split) {
+            if (part.match(/^\d+$/)) found_match = true
+        }
+        if (!found_match) filtered.push(e)
+    }
+    return filtered
 }
 
 
@@ -65,6 +46,12 @@ function querySelectorAllIncudingTemplates(root, selector) {
 }
 
 
+/**
+ *
+ * @param {any[]} array
+ * @param {function} key
+ * @returns {any[]}
+ */
 function remove_duplicates_keeping_last(array, key) {
     return [...new Map(array.map(x => [key(x), x])).values()]
 }
@@ -73,6 +60,7 @@ function remove_duplicates_keeping_last(array, key) {
 /**
  * Takes a string of the format "css_property_name.value1.value2.<more_values>" and
  * converts it to an object of the format {property: "css_property_name", value: "value1 value2 ..." }
+ * @param {string} style_dot_notation
  */
 function parse_dot_notation_to_object(style_dot_notation) {
     const split = style_dot_notation.split(".")
@@ -81,12 +69,8 @@ function parse_dot_notation_to_object(style_dot_notation) {
     let value = split.slice(1).join(".")
     let parenthesis_is_open = false
     for (var i = 0; i < value.length; i++) {
-        if (value[i] === "(") {
-            parenthesis_is_open = true
-            continue
-        }
-        if (value[i] === ")") {
-            parenthesis_is_open = false
+        if ("()".includes(value[i])) {
+            parenthesis_is_open = value[i] === "("
             continue
         }
         if (!parenthesis_is_open && value[i] === ".") {
@@ -94,20 +78,25 @@ function parse_dot_notation_to_object(style_dot_notation) {
         }
     }
 
-    return {
-        property: property,
-        value: value,
-    }
+    return { property, value }
 }
 
 
+/**
+ * Takes a ui_tag string and returns an array of objects with the format
+ * { property: "css_property_name", value: "value1 value2 ..." }.
+ * All substitutions are performed, and duplicate properties are removed by
+ * keeping the last one.
+ * @param {string} ui_tag
+ * @returns {[{property: string, value: string}]}
+ */
 function parse_ui_tag(ui_tag) {
-    let style_components = [] // {property: <property>, value: <value>}
+    let css_rules = [] // {property: <property>, value: <value>}
     for (const s of ui_tag.split(" ")) {
         // Case 1: shortcut like "pos.abs" or "button"
         if (s in lastcss.substitutions) {
             for (const e of lastcss.substitutions[s].split(" ")) {
-                style_components.push(parse_dot_notation_to_object(e))
+                css_rules.push(parse_dot_notation_to_object(e))
             }
             continue
         }
@@ -116,61 +105,208 @@ function parse_ui_tag(ui_tag) {
         if (shortcut in lastcss.substitutions) {
             const expanded = lastcss.substitutions[shortcut] + s.substring(shortcut.length)
             for (const e of expanded.split(" ")) {
-                style_components.push(parse_dot_notation_to_object(e))
+                css_rules.push(parse_dot_notation_to_object(e))
             }
             continue
         }
         // Case 3: No substitution exists
-        style_components.push(parse_dot_notation_to_object(s))
+        css_rules.push(parse_dot_notation_to_object(s))
     }
-    return remove_duplicates_keeping_last(style_components, e => e.property)
+    return remove_duplicates_keeping_last(css_rules, e => e.property)
 }
 
 
-function apply_style_inline(elements) {
-    for (const element of elements) {
-        const ui_tag = element.getAttribute("ui")
-        for (const { property, value } of parse_ui_tag(ui_tag)) {
-            element.style[property] = value
-        }
+
+
+
+
+// Can be an abbreviation, like ml.5px (later evaluated to margin-left: 5px;)
+// But also could already represent a stict CCS rule
+class LaxUIProperty {
+    /**
+     * @param {string} property
+     */
+    constructor(property) {
+        this.property = property
+    }
+}
+
+
+// Must be strictly valid CSS
+class StrictUIProperty {
+    /**
+     * @param {string} css_str
+     *
+     */
+    constructor(css_str) {
+        const {property, value} = parse_dot_notation_to_object(css_str)
+        this.name = property
+        this.value = value
+    }
+}
+
+
+
+import { components } from "./components"
+
+
+
+
+class UIElement {
+    /** @type {Element} */ element
+    /** @type {string[]} */ ui_tag_list
+    /** @type {UIComponent|null} */ component
+    /** @type {string[]} */ used_component_modifiers
+
+    /**
+     * @param {Element} element
+     */
+    constructor(element) {
+        this.element = element
+        this.ui_tag_list = element.getAttribute("ui").split(" ")
         element.removeAttribute("ui")
     }
-}
+
+    extract_component_properties = () => {
+        let components_to_apply = intersect(this.ui_tag_list, Object.keys(components))
+        // To many components found
+        if (components_to_apply.length > 1) {
+            throw new Error(`Cannot apply multiple ui components to one element. Choose one from: ${components_to_apply.join(", ")}`)
+        }
+        // No component found
+        if (components_to_apply.length === 0) {
+            this.component = null
+            return
+        }
+        // Found exactly one component
+        this.component = components[components_to_apply[0]]
+
+        // Remove component and its modifiers from ui tag list
+        this.ui_tag_list = this.ui_tag_list.filter(e => e !== this.component.shortcut)
+
+        // Extract used modifiers and remove them from ui tag list
+        this.used_component_modifiers = intersect(this.ui_tag_list, Object.keys(this.component.modifiers))
+        this.ui_tag_list = this.ui_tag_list.filter(e => !this.used_component_modifiers.includes(e))
+    }
 
 
-/**
- * Generate a style selector for every used ui tag element.
- * Problematic: The order in the ui tag is not guaranteed.
- * The elements further to the right in the ui tag should overwrite elements further to the left.
- */
-function apply_style_global(elements) {
-    let styles = {}
+    apply_component_functions = () => {
+        if (!this.component) return
 
-    for (const element of elements) {
-        const ui_tag = element.getAttribute("ui")
-
-        let style_str = ""
-        for (const { property, value } of parse_ui_tag(ui_tag)) {
-            style_str += `${property}:${value};`
+        if ("init" in this.component) this.component.init(this.element)
+        if ("events" in this.component) {
+            for (const event in this.component.events) {
+                this.element.addEventListener(event, this.component.events[event])
+            }
         }
 
-        if (style_str in styles) {
-            styles[style_str].push(element)
-        } else {
-            styles[style_str] = [element]
+        // Set the final value of the ui tag to the component name and the used modifiers
+        this.element.setAttribute("ui", `${this.component.name} ${this.used_component_modifiers.join(" ")}`)
+    }
+
+    apply_style_inline = () => {
+        const ui_tag = this.ui_tag_list.join(" ")
+        for (const { property, value } of parse_ui_tag(ui_tag)) {
+            this.element.style[property] = value
         }
     }
 
-    let style_str = Object.entries(styles).map(([style, style_elements], i) => {
-        const id = get_unique_id()
-        style_elements.map(e => e.setAttribute("ui", id))
-        return `[ui="${id}"]{\n${style.split(";").join(";\n")}}`
-    }).join("\n")
-
-    var style = document.createElement('style')
-    style.innerHTML = style_str
-    document.head.appendChild(style)
 }
+
+
+
+
+class UIElementList {
+    /** @type {UIElement[]} */ elements
+
+    /**
+     * @param {Element[]} elements
+     */
+    constructor(elements) {
+        this.elements = []
+        for (const element of elements) {
+            const ui_element = new UIElement(element)
+            ui_element.extract_component_properties()
+            this.elements.push(ui_element)
+        }
+    }
+
+    make_global_component_style_sheet = () => {
+        let all_styles = {}
+        for (const element of this.elements) {
+            if (!element.component) continue
+            const element_selector = `[ui~="${element.component.name}"]`
+
+            if (!(element_selector in all_styles)) {
+                all_styles[element_selector] = parse_ui_tag(element.component.ui_tag).map(e => `${e.property}:${e.value};\n`).join("")
+            }
+
+            for (const modifier of element.used_component_modifiers) {
+                const modifier_selector = `:where([ui~="${element.component.name}"])[ui~="${modifier}"]`
+                if(!(modifier_selector in all_styles)) {
+                    const css_rules = parse_ui_tag(element.component.modifiers[modifier])
+                    let style_str = css_rules.map(e => `${e.property}:${e.value};\n`).join("")
+                    all_styles[modifier_selector] = style_str
+                }
+            }
+        }
+
+        // Insert style before the first style tag to obtain lowest priority
+        var style_ele = document.createElement("style")
+        style_ele.innerHTML = Object.entries(all_styles).map(e => `${e[0]}{\n${e[1]}}`).join("")
+        document.head.insertBefore(style_ele, document.head.querySelector("style"))
+    }
+
+    apply_component_functions = () => {
+        for (const element of this.elements) {
+            element.apply_component_functions()
+        }
+    }
+
+    apply_styles_inline = () => {
+        for (const element of this.elements) {
+            element.apply_style_inline()
+        }
+    }
+
+    apply_styles_global = () => {
+        const elements = this.elements
+        let styles = {}
+
+        for (const element of elements) {
+            const ui_tag = element.ui_tag_list.join(" ")
+
+            let style_str = ""
+            for (const { property, value } of parse_ui_tag(ui_tag)) {
+                style_str += `${property}:${value};`
+            }
+
+            if (style_str in styles) {
+                styles[style_str].push(element)
+            } else {
+                styles[style_str] = [element]
+            }
+        }
+
+        let style_str = Object.entries(styles).map(([style, style_elements], i) => {
+            const id = get_unique_id()
+
+            style_elements.map(e => e.element.setAttribute("ui", [e.element.getAttribute("ui") ?? "", id].join(" ")))
+            return `[ui~="${id}"]{\n${style.split(";").join(";\n")}}`
+        }).join("\n")
+
+        var style = document.createElement('style')
+        style.innerHTML = style_str
+        document.head.appendChild(style)
+    }
+
+
+}
+
+
+
+
+
 
 
 
@@ -181,27 +317,25 @@ function apply_all() {
     let elements = querySelectorAllIncudingTemplates(document, "[ui]")
     elements = remove_with_numeric_ui_tag(elements)
 
-    log("apply_all", elements)
-    // Apply components
-    for (const element of elements) {
-        apply_components(element)
-    }
+    // alpine duplicates id tag from first init, but then buttons wont be parsed again.
+
+    const ui_element_list = new UIElementList(elements)
+    ui_element_list.make_global_component_style_sheet()
+    ui_element_list.apply_component_functions()
 
     // Apply styles based on configured mode
     if (lastcss.config.mode === "global") {
-        apply_style_global(elements)
+        ui_element_list.apply_styles_global()
     }
     else if (lastcss.config.mode === "inline") {
-        apply_style_inline(elements)
+        ui_element_list.apply_styles_inline()
     }
 
-    timeEnd("🟣🏁 Apply styles")
+    time("🟣🏁 Apply styles")
 }
 
 
 
-export default {
-    dispatch,
-    get_unique_id,
+export {
     apply_all,
 }

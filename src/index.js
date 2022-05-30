@@ -1,6 +1,6 @@
 import lastcss from "./lastcss"
-import { log, time, timeEnd } from "./logging"
-import utils from "./utils"
+import { log, time, dispatch } from "./tools"
+import { apply_all } from "./utils"
 
 
 window.lastcss = lastcss
@@ -13,15 +13,16 @@ if (!document.body) {
 log("🟣 Last: start init")
 
 // Load
-time("🟣 Last init")
-utils.dispatch(document, "last:init")
+time("Last init")
+
+dispatch(document, "last:init")
 
 // Parse and validate substitutions
-lastcss.refresh = utils.apply_all
+lastcss.refresh = apply_all
 
 
 // Perform substitutions
-utils.apply_all()
+apply_all()
 
-utils.dispatch(document, "last:initialized")
-timeEnd("🟣 Last init")
+dispatch(document, "last:initialized")
+time("Last init")
