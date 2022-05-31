@@ -127,3 +127,20 @@ becomes
 ```html
 <div class=" _L_button _L_secondary">
 ```
+
+
+
+# IDS
+
+
+An element can have a ID
+
+<div ui="#pageloader centered loader">
+	
+then in js;
+	
+L("pageloader").show()
+...
+L("pageloader").hide()
+	
+
