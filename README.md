@@ -1,10 +1,16 @@
+# TODOS
+
+## When published
+- Building the substitutions object should happen at build time, not on every script load.
+- Explore tradeoff between size and computation time, with respect to the substitutions. How much should it be pre-computed in the compile step.
+
+
+
+
+
+
 
 # Last CSS
-
-
-
-The last CSS framework you will ever need!
-
 
 
 A css library that:
