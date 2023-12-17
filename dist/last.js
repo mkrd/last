@@ -252,7 +252,10 @@
           this.element.addEventListener(event, this.component.events[event]);
         }
       }
-      this.element.setAttribute("ui", `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`);
+      const new_ui_tag = `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`;
+      if (this.element.getAttribute("ui") !== new_ui_tag) {
+        this.element.setAttribute("ui", `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`);
+      }
     };
     apply_style_inline = () => {
       const ui_tag = this.ui_tag_list.join(" ");
@@ -392,14 +395,6 @@ ${style2.split(";").join(";\n")}}`;
     }
     time("Mutation observer callback");
   }
-  window.last_css_observer = new MutationObserver(on_mutation);
-  window.last_css_observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["ui"],
-    attributeOldValue: true
-  });
 
   // src/index.js
   window.lastcss = lastcss_default;
@@ -410,6 +405,13 @@ ${style2.split(";").join(";\n")}}`;
   time("Last init");
   dispatch(document, "last:init");
   apply_all();
+  window.last_css_observer = new MutationObserver(on_mutation);
+  window.last_css_observer.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["ui"],
+    attributeOldValue: true
+  });
   dispatch(document, "last:initialized");
   time("Last init");
 })();

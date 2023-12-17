@@ -204,7 +204,11 @@ class UIElement {
         }
 
         // Set the final value of the ui tag to the component name and the used modifiers
-        this.element.setAttribute("ui", `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`)
+
+        const new_ui_tag = `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`
+        if (this.element.getAttribute("ui") !== new_ui_tag) {
+            this.element.setAttribute("ui", `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`)
+        }
     }
 
     apply_style_inline = () => {
@@ -396,15 +400,9 @@ function on_mutation(mutation_list, observer) {
     time("Mutation observer callback")
 }
 
-window.last_css_observer = new MutationObserver(on_mutation)
-window.last_css_observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["ui"],
-    attributeOldValue: true,
-})
+
 
 export {
     apply_all,
+    on_mutation,
 }

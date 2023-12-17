@@ -1,6 +1,6 @@
 import lastcss from "./lastcss"
 import { log, time, dispatch } from "./tools"
-import { apply_all } from "./utils"
+import { apply_all, on_mutation } from "./utils"
 
 
 window.lastcss = lastcss
@@ -20,6 +20,16 @@ dispatch(document, "last:init")
 
 // Perform substitutions
 apply_all()
+
+// Register MutationObserver
+window.last_css_observer = new MutationObserver(on_mutation)
+window.last_css_observer.observe(document.body, {
+    // childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["ui"],
+    attributeOldValue: true,
+})
 
 dispatch(document, "last:initialized")
 time("Last init")
