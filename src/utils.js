@@ -13,7 +13,7 @@ import { log, time, intersect, get_unique_id } from "./tools"
  * @param {Element[]} elements - The elements to filter.
  * @returns {Element[]} The elements that do not have a ui attribute that is a number.
  */
-function remove_with_numeric_ui_tag(elements) {
+function filter_elements_with_number_ui_attr(elements) {
 
     let filtered = []
 
@@ -191,9 +191,12 @@ class UIElement {
 
 
     apply_component_functions = () => {
-        if (!this.component) return
-
-        if ("init" in this.component) this.component.init(this.element)
+        if (!this.component) {
+            return
+        }
+        if ("init" in this.component) {
+          this.component.init(this.element)
+        }
         if ("events" in this.component) {
             for (const event in this.component.events) {
                 this.element.addEventListener(event, this.component.events[event])
@@ -201,7 +204,7 @@ class UIElement {
         }
 
         // Set the final value of the ui tag to the component name and the used modifiers
-        this.element.setAttribute("ui", `${this.component.name} ${this.used_component_modifiers.join(" ")}`)
+        this.element.setAttribute("ui", `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`)
     }
 
     apply_style_inline = () => {
@@ -234,7 +237,9 @@ class UIElementList {
     make_global_component_style_sheet = () => {
         let all_styles = {}
         for (const element of this.elements) {
-            if (!element.component) continue
+            if (!element.component){
+                continue
+            }
             const element_selector = `[ui~="${element.component.name}"]`
 
             if (!(element_selector in all_styles)) {
@@ -295,7 +300,7 @@ class UIElementList {
             return `[ui~="${id}"]{\n${style.split(";").join(";\n")}}`
         }).join("\n")
 
-        var style = document.createElement('style')
+        let style = document.createElement('style')
         style.innerHTML = style_str
         document.head.appendChild(style)
     }
@@ -304,24 +309,24 @@ class UIElementList {
 }
 
 
+/**
+ * Applies all substitutions to the given string.
+ * @param {Element} element
+ * @returns {string}
+ */
+function apply_to_element(element, source=null) {
+    if (source !== null) {
+        console.log("📍 Run apply_to_element from source", source, "for element", element)
+    }
+    else {
+        console.log("📍 Run apply_to_element for element", element)
+    }
 
 
-
-
-
-
-function apply_all() {
-    time("🟣🏁 Apply styles")
-
-    // Get all elements with ui tag, including those in template elements
-    let elements = querySelectorAllIncudingTemplates(document, "[ui]")
-    elements = remove_with_numeric_ui_tag(elements)
-
-    // alpine duplicates id tag from first init, but then buttons wont be parsed again.
-
-    const ui_element_list = new UIElementList(elements)
+    const ui_element_list = new UIElementList([element])
     ui_element_list.make_global_component_style_sheet()
     ui_element_list.apply_component_functions()
+    ui_element_list.apply_styles_inline()
 
     // Apply styles based on configured mode
     if (lastcss.config.mode === "global") {
@@ -330,11 +335,75 @@ function apply_all() {
     else if (lastcss.config.mode === "inline") {
         ui_element_list.apply_styles_inline()
     }
-
-    time("🟣🏁 Apply styles")
 }
 
 
+
+function apply_all() {
+    time("🟣🏁 Apply all styles")
+
+    // Get all elements with ui tag, including those in template elements
+    let elements = querySelectorAllIncudingTemplates(document, "[ui]")
+
+    // Remove elements that have a ui attribute that is a number
+    elements = filter_elements_with_number_ui_attr(elements)
+
+    // alpine duplicates id tag from first init, but then buttons wont be parsed again.
+
+    for (const element of elements) {
+        apply_to_element(element, "apply_all")
+    }
+
+    time("🟣🏁 Apply all styles")
+}
+
+
+function on_mutation(mutation_list, observer) {
+    time("Mutation observer callback")
+    console.log("mutation_list", mutation_list)
+    for (const mutation of mutation_list) {
+        if (mutation.type === "childList") {
+            for (const added_node of mutation.addedNodes) {
+                if (added_node.nodeType !== Node.ELEMENT_NODE) {
+                    continue
+                }
+                if (!added_node.hasAttribute("ui")) {
+                    continue
+                }
+                apply_to_element(added_node, "childList mutation")
+            }
+        }
+        else if (mutation.type === "attributes") {
+            if (mutation.target.nodeType !== Node.ELEMENT_NODE) {
+                continue
+            }
+            if (!mutation.target.hasAttribute("ui")) {
+                continue
+            }
+            if (mutation.oldValue === null) {
+                continue
+            }
+
+            const old_ui_tag = String(mutation.oldValue).trim()
+            const new_ui_tag = mutation.target.getAttribute("ui").trim()
+
+            if (old_ui_tag === new_ui_tag) {
+                continue
+            }
+            apply_to_element(mutation.target, "attribute mutation (" + old_ui_tag + " -> " + new_ui_tag + ")")
+        }
+    }
+    time("Mutation observer callback")
+}
+
+window.last_css_observer = new MutationObserver(on_mutation)
+window.last_css_observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["ui"],
+    attributeOldValue: true,
+})
 
 export {
     apply_all,

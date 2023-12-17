@@ -9,11 +9,11 @@ export const button_component = {
         "secondary": "bg-color.var(--ui-secondary-color)",
     },
     init: (ele) => {
-        log("Init button", ele)
+        log("Button component init", ele)
     },
     events: {
         click: (event) => {
-            log("Clicked button", event.target)
+            log("Button component clicked", event.target)
         }
     }
 }

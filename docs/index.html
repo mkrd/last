@@ -13,9 +13,6 @@
 			margin: 0 auto;
 		}
 
-		.hi {
-			background-color: aliceblue;
-		}
 
 	</style>
 </head>
@@ -50,11 +47,14 @@
 		</button>
 		<div x-data ui="flow.row.wrap gap.10px.4px">
 
-			<template x-for="i in 300">
+			<template x-for="i in react.button_count">
 
-				<button class="hi" ui="secondary button display.block justify-content.center flex-basis.100px" x-text="'Button ' + i">
-					This is a test page.
-				</button>
+				<button
+					class="hi"
+					ui="secondary button display.block justify-content.center flex-basis.100px color.#000"
+					x-text="'Button ' + i"
+					@click="react.button_count = react.button_count + 1; $el.setAttribute('ui', 'secondary button display.block justify-content.center flex-basis.100px color.#888');"
+				></button>
 			</template>
 		</div>
 
@@ -65,12 +65,12 @@
 
 </body>
 
-<script defer src="last.js"></script>
 <script defer src="alpine.js"></script>
+<script defer src="../dist/last.js"></script>
 <script>
 	document.addEventListener("last:init", () => {
 		console.log("🟢last:init fired")
-		lastcss.config.mode = "global"
+		lastcss.config.mode = "inline"
 		lastcss.config.log = true
 	})
 
@@ -80,19 +80,13 @@
 
 	let react = {
 		last_annotation_id: "",
+		button_count: 300,
 	}
 
 	document.addEventListener("alpine:init", () => {
 		console.log("🟡", "alpine:init event fired")
 		react = Alpine.reactive(react)
-	})
-
-	document.addEventListener("alpine:initialized", () => {
-		console.log("🟡", "alpine:initialized event fired")
-		if ("lastcss" in window) {
-			console.log("---- refresh last")
-			lastcss.refresh()
-		}
+		console.log("🟡 apline reactivity initialized")
 	})
 
 </script>

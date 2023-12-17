@@ -17,11 +17,6 @@ time("Last init")
 
 dispatch(document, "last:init")
 
-// Parse and validate substitutions
-lastcss.refresh = apply_all
-// Here, a MutationObserver could be created to run apply_all when any ui tag changes
-// apply_all should keep track of the current styles state and only apply changes when
-// the set of css rules actually changes
 
 // Perform substitutions
 apply_all()

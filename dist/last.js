@@ -130,11 +130,11 @@
       "secondary": "bg-color.var(--ui-secondary-color)"
     },
     init: (ele) => {
-      log("Init button", ele);
+      log("Button component init", ele);
     },
     events: {
       click: (event) => {
-        log("Clicked button", event.target);
+        log("Button component clicked", event.target);
       }
     }
   };
@@ -154,7 +154,7 @@
   register_component(button_component);
 
   // src/utils.js
-  function remove_with_numeric_ui_tag(elements) {
+  function filter_elements_with_number_ui_attr(elements) {
     let filtered = [];
     for (const e of elements) {
       const split = e.getAttribute("ui").split(" ");
@@ -241,17 +241,18 @@
       this.ui_tag_list = this.ui_tag_list.filter((e) => !this.used_component_modifiers.includes(e));
     };
     apply_component_functions = () => {
-      if (!this.component)
+      if (!this.component) {
         return;
-      console.log(this.element);
-      if ("init" in this.component)
+      }
+      if ("init" in this.component) {
         this.component.init(this.element);
+      }
       if ("events" in this.component) {
         for (const event in this.component.events) {
           this.element.addEventListener(event, this.component.events[event]);
         }
       }
-      this.element.setAttribute("ui", `${this.component.name} ${this.used_component_modifiers.join(" ")}`);
+      this.element.setAttribute("ui", `${this.used_component_modifiers.join(" ")} ${this.ui_tag_list.join(" ")}`);
     };
     apply_style_inline = () => {
       const ui_tag = this.ui_tag_list.join(" ");
@@ -273,8 +274,9 @@
     make_global_component_style_sheet = () => {
       let all_styles = {};
       for (const element of this.elements) {
-        if (!element.component)
+        if (!element.component) {
           continue;
+        }
         const element_selector = `[ui~="${element.component.name}"]`;
         if (!(element_selector in all_styles)) {
           all_styles[element_selector] = parse_ui_tag(element.component.ui_tag).map((e) => `${e.property}:${e.value};
@@ -326,25 +328,78 @@ ${e[1]}}`).join("");
         return `[ui~="${id}"]{
 ${style2.split(";").join(";\n")}}`;
       }).join("\n");
-      var style = document.createElement("style");
+      let style = document.createElement("style");
       style.innerHTML = style_str;
       document.head.appendChild(style);
     };
   };
-  function apply_all() {
-    time("\u{1F7E3}\u{1F3C1} Apply styles");
-    let elements = querySelectorAllIncudingTemplates(document, "[ui]");
-    elements = remove_with_numeric_ui_tag(elements);
-    const ui_element_list = new UIElementList(elements);
+  function apply_to_element(element, source = null) {
+    if (source !== null) {
+      console.log("\u{1F4CD} Run apply_to_element from source", source, "for element", element);
+    } else {
+      console.log("\u{1F4CD} Run apply_to_element for element", element);
+    }
+    const ui_element_list = new UIElementList([element]);
     ui_element_list.make_global_component_style_sheet();
     ui_element_list.apply_component_functions();
+    ui_element_list.apply_styles_inline();
     if (lastcss.config.mode === "global") {
       ui_element_list.apply_styles_global();
     } else if (lastcss.config.mode === "inline") {
       ui_element_list.apply_styles_inline();
     }
-    time("\u{1F7E3}\u{1F3C1} Apply styles");
   }
+  function apply_all() {
+    time("\u{1F7E3}\u{1F3C1} Apply all styles");
+    let elements = querySelectorAllIncudingTemplates(document, "[ui]");
+    elements = filter_elements_with_number_ui_attr(elements);
+    for (const element of elements) {
+      apply_to_element(element, "apply_all");
+    }
+    time("\u{1F7E3}\u{1F3C1} Apply all styles");
+  }
+  function on_mutation(mutation_list, observer) {
+    time("Mutation observer callback");
+    console.log("mutation_list", mutation_list);
+    for (const mutation of mutation_list) {
+      if (mutation.type === "childList") {
+        for (const added_node of mutation.addedNodes) {
+          if (added_node.nodeType !== Node.ELEMENT_NODE) {
+            continue;
+          }
+          if (!added_node.hasAttribute("ui")) {
+            continue;
+          }
+          apply_to_element(added_node, "childList mutation");
+        }
+      } else if (mutation.type === "attributes") {
+        if (mutation.target.nodeType !== Node.ELEMENT_NODE) {
+          continue;
+        }
+        if (!mutation.target.hasAttribute("ui")) {
+          continue;
+        }
+        if (mutation.oldValue === null) {
+          continue;
+        }
+        const old_ui_tag = String(mutation.oldValue).trim();
+        const new_ui_tag = mutation.target.getAttribute("ui").trim();
+        if (old_ui_tag === new_ui_tag) {
+          continue;
+        }
+        apply_to_element(mutation.target, "attribute mutation (" + old_ui_tag + " -> " + new_ui_tag + ")");
+      }
+    }
+    time("Mutation observer callback");
+  }
+  window.last_css_observer = new MutationObserver(on_mutation);
+  window.last_css_observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["ui"],
+    attributeOldValue: true
+  });
 
   // src/index.js
   window.lastcss = lastcss_default;
@@ -354,7 +409,6 @@ ${style2.split(";").join(";\n")}}`;
   log("\u{1F7E3} Last: start init");
   time("Last init");
   dispatch(document, "last:init");
-  lastcss_default.refresh = apply_all;
   apply_all();
   dispatch(document, "last:initialized");
   time("Last init");
