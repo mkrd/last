@@ -213,7 +213,6 @@
     constructor(element) {
       this.element = element;
       this.ui_tag_list = element.getAttribute("ui").split(" ");
-      element.removeAttribute("ui");
     }
     extract_component_properties = () => {
       let components_to_apply = intersect(this.ui_tag_list, Object.keys(components));
@@ -334,7 +333,6 @@ ${style2.split(";").join(";\n")}}`;
     const ui_element_list = new UIElementList([element]);
     ui_element_list.make_global_component_style_sheet();
     ui_element_list.apply_component_functions();
-    ui_element_list.apply_styles_inline();
     if (lastcss.config.mode === "global") {
       ui_element_list.apply_styles_global();
     } else if (lastcss.config.mode === "inline") {
@@ -371,12 +369,10 @@ ${style2.split(";").join(";\n")}}`;
         if (!mutation.target.hasAttribute("ui")) {
           continue;
         }
-        if (mutation.oldValue === null) {
-          continue;
-        }
         const old_ui_tag = String(mutation.oldValue).trim();
         const new_ui_tag = mutation.target.getAttribute("ui").trim();
         if (old_ui_tag === new_ui_tag) {
+          log("\u23ED\uFE0F Skip apply_to_element, ui attribute did not change");
           continue;
         }
         apply_to_element(mutation.target, "attribute mutation (" + old_ui_tag + " -> " + new_ui_tag + ")");
