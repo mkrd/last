@@ -393,6 +393,7 @@ ${style2.split(";").join(";\n")}}`;
   apply_all();
   window.last_css_observer = new MutationObserver(on_mutation);
   window.last_css_observer.observe(document.body, {
+    childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ["ui"],

@@ -24,7 +24,7 @@ apply_all()
 // Register MutationObserver
 window.last_css_observer = new MutationObserver(on_mutation)
 window.last_css_observer.observe(document.body, {
-    // childList: true,
+    childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ["ui"],
