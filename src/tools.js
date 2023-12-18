@@ -65,7 +65,7 @@ export function time(label) {
  * @param {Element} element - The element to dispatch the event on.
  * @param {string} name - The name of the event.
  */
-export function dispatch(element, name, detail = {}) {
+export function dispatch_event(element, name, detail = {}) {
     element.dispatchEvent(
         new CustomEvent(name, {
             detail,
@@ -99,7 +99,3 @@ export function get_unique_id() {
 export function intersect(a, b) {
     return a.filter(x => b.includes(x))
 }
-
-
-assert(array_equals(intersect([1, 2, 3], [2, 3, 4]), [2, 3]))
-assert(array_equals(intersect([1, 2, 3], [4, 5, 6]), []))

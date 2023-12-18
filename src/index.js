@@ -15,7 +15,7 @@ log("🟣 Last: start init")
 // Load
 time("Last init")
 
-dispatch(document, "last:init")
+dispatch_event(document, "last:init")
 
 
 // Perform substitutions
@@ -31,5 +31,5 @@ window.last_css_observer.observe(document.body, {
     attributeOldValue: true,
 })
 
-dispatch(document, "last:initialized")
+dispatch_event(document, "last:initialized")
 time("Last init")
