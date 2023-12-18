@@ -1,5 +1,5 @@
 import lastcss from "./lastcss"
-import { log, time, dispatch } from "./tools"
+import { log, time, dispatch_event } from "./tools"
 import { apply_all, on_mutation } from "./utils"
 
 
