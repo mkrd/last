@@ -8,10 +8,12 @@ export class UIComponent {
     constructor(json) {
         this.name = json.name
         this.ui_tag = json.ui_tag
-        this.modifiers = {}
-        if("modifiers" in json) this.modifiers = json.modifiers
         this.init = json.init
         this.events = json.events
+        this.modifiers = {}
+        if("modifiers" in json) {
+            this.modifiers = json.modifiers
+        }
     }
 
 
