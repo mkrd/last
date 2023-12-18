@@ -164,7 +164,6 @@ class UIElement {
     constructor(element) {
         this.element = element
         this.ui_tag_list = element.getAttribute("ui").split(" ")
-        element.removeAttribute("ui")
     }
 
     extract_component_properties = () => {
@@ -330,7 +329,6 @@ function apply_to_element(element, source=null) {
     const ui_element_list = new UIElementList([element])
     ui_element_list.make_global_component_style_sheet()
     ui_element_list.apply_component_functions()
-    ui_element_list.apply_styles_inline()
 
     // Apply styles based on configured mode
     if (lastcss.config.mode === "global") {
@@ -384,14 +382,12 @@ function on_mutation(mutation_list, observer) {
             if (!mutation.target.hasAttribute("ui")) {
                 continue
             }
-            if (mutation.oldValue === null) {
-                continue
-            }
 
             const old_ui_tag = String(mutation.oldValue).trim()
             const new_ui_tag = mutation.target.getAttribute("ui").trim()
 
             if (old_ui_tag === new_ui_tag) {
+                log("⏭️ Skip apply_to_element, ui attribute did not change")
                 continue
             }
             apply_to_element(mutation.target, "attribute mutation (" + old_ui_tag + " -> " + new_ui_tag + ")")
