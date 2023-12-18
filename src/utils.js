@@ -325,7 +325,6 @@ function apply_to_element(element, source=null) {
         console.log("📍 Run apply_to_element for element", element)
     }
 
-
     const ui_element_list = new UIElementList([element])
     ui_element_list.make_global_component_style_sheet()
     ui_element_list.apply_component_functions()
